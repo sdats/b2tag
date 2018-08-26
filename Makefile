@@ -3,7 +3,7 @@ MKDIR  ?= mkdir
 
 PREFIX ?= /usr/local
 
-CFLAGS += -Wall -Wextra -Werror
+CFLAGS += -Wall -Wextra -Werror -O2 $(EXTRA_CFLAGS)
 LDLIBS = -lcrypto
 
 .PHONY: all clean install

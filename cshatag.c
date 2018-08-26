@@ -187,18 +187,18 @@ void getstoredxa(FILE *f, xa_t *stored)
 /**
  * Write out metadata to file's extended attributes
  */
-int writexa(FILE *f, xa_t xa)
+int writexa(FILE *f, xa_t *xa)
 {
 	int fd = fileno(f);
 	int flags = 0;
 	int err = 0;
 	char buf[32];
 
-	err = fsetxattr(fd, "user.shatag.sha256", &xa.sha256, sizeof(xa.sha256), flags);
+	err = fsetxattr(fd, "user.shatag.sha256", &xa->sha256, sizeof(xa->sha256), flags);
 	if (err != 0)
 		return err;
 
-	snprintf(buf, sizeof(buf), "%llu.%09lu", xa.s, xa.ns);
+	snprintf(buf, sizeof(buf), "%llu.%09lu", xa->s, xa->ns);
 	err = fsetxattr(fd, "user.shatag.ts", buf, strlen(buf), flags);
 	return err;
 }
@@ -206,24 +206,16 @@ int writexa(FILE *f, xa_t xa)
 /**
  * Pretty-print metadata
  */
-char *formatxa(xa_t s)
+void formatxa(xa_t *s, char *buf, size_t buflen)
 {
-	char *buf;
 	char *prettysha;
-	int buflen = HASHLEN * 2 + 32;
 
-	buf = calloc(1, buflen);
-	if (NULL == buf)
-		die("Insufficient space to store hash stringed");
-
-	if (strlen(s.sha256) > 0)
-		prettysha = s.sha256;
+	if (strlen(s->sha256) > 0)
+		prettysha = s->sha256;
 	else
 		prettysha = "0000000000000000000000000000000000000000000000000000000000000000";
 
-	snprintf(buf, buflen, "%s %llu.%09lu", prettysha, s.s, s.ns);
-
-	return buf;
+	snprintf(buf, buflen, "%s %llu.%09lu", prettysha, s->s, s->ns);
 }
 
 int main(int argc, char *argv[])
@@ -260,6 +252,8 @@ int main(int argc, char *argv[])
 			xa_t a2;
 			getmtime(f, &a2);
 
+			char tmp[HASHLEN * 2 + 32];
+
 			if (s.s == a2.s && s.ns == a2.ns) {
 				/*
 				 * Now, this is either data corruption or somebody modified the file
@@ -267,8 +261,10 @@ int main(int argc, char *argv[])
 				 */
 				fprintf(stderr, "Error: corrupt file \"%s\"\n", fn);
 				printf("<corrupt> %s\n", fn);
-				printf(" stored: %s\n", formatxa(s));
-				printf(" actual: %s\n", formatxa(a));
+				formatxa(&s, tmp, sizeof(tmp));
+				printf(" stored: %s\n", tmp);
+				formatxa(&a, tmp, sizeof(tmp));
+				printf(" actual: %s\n", tmp);
 				needsupdate = 1;
 				havecorrupt = 1;
 			}
@@ -277,14 +273,19 @@ int main(int argc, char *argv[])
 			printf("<ok> %s\n", fn);
 	}
 	else {
+		char tmp[HASHLEN * 2 + 32];
 		printf("<outdated> %s\n", fn);
-		printf(" stored: %s\n", formatxa(s));
-		printf(" actual: %s\n", formatxa(a));
+		formatxa(&s, tmp, sizeof(tmp));
+		printf(" stored: %s\n", tmp);
+		formatxa(&a, tmp, sizeof(tmp));
+		printf(" actual: %s\n", tmp);
 		needsupdate = 1;
 	}
 
-	if (needsupdate && writexa(f,a) != 0)
+	if (needsupdate && writexa(f, &a) != 0)
 		die("Error: could not write extended attributes to file \"%s\": %m\n", fn);
+
+	fclose(f);
 
 	if (havecorrupt)
 		return 5;
