@@ -26,10 +26,11 @@
 #include <sys/xattr.h>
 #include <time.h>
 
+#include <openssl/evp.h>
 #include <openssl/sha.h>
 
 #define BUFSZ 65536
-#define HASHLEN SHA256_DIGEST_LENGTH
+#define HASHALG "sha256"
 
 /**
  * Holds a file's metadata
@@ -38,7 +39,9 @@ typedef struct
 {
 	unsigned long long s;
 	unsigned long ns;
-	char sha256[HASHLEN * 2 + 1];
+	char const *alg;
+	int length;
+	char hash[EVP_MAX_MD_SIZE * 2 + 1];
 } xa_t;
 
 static void die(const char *fmt, ...) __attribute__((noreturn, format(printf, 1, 2)));
@@ -57,10 +60,10 @@ static void die(const char *fmt, ...)
 /**
  * ASCII hex representation of char array
  */
-void bin2hex(unsigned char *bin, char *out, size_t len)
+void bin2hex(char *out, unsigned char *bin, int len)
 {
 	char hexval[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
-	size_t i;
+	int i;
 
 	for (i = 0; i < len; i++) {
 		out[2 * i] = hexval[((bin[i] >> 4) & 0x0F)];
@@ -71,32 +74,49 @@ void bin2hex(unsigned char *bin, char *out, size_t len)
 }
 
 /**
- * sha256 of contents of f, ASCII hex representation
+ * hash of contents of f, ASCII hex representation
  */
-void fhash(FILE *f, char *hex)
+void fhash(FILE *f, xa_t *xa)
 {
-	SHA256_CTX c;
+	EVP_MD_CTX *c;
+	EVP_MD const *alg;
 	char *buf;
-	unsigned char *hash;
+	unsigned char hash[EVP_MAX_MD_SIZE];
 	size_t len;
+	int alg_len;
 
 	buf = malloc(BUFSZ);
-	hash = calloc(1, HASHLEN);
+	c = EVP_MD_CTX_new();
 
-	if (NULL == buf || NULL == hash)
+	if (NULL == buf || NULL == c)
 		die("Insufficient memory for hashing file");
 
-	SHA256_Init(&c);
+	alg = EVP_get_digestbyname(xa->alg);
+	if (NULL == alg)
+		die("Failed to find hash algorithm %s\n", HASHALG);
 
-	while ((len = fread(buf, 1, BUFSZ, f)) != 0)
-		SHA256_Update(&c, buf, len);
+	if (EVP_DigestInit_ex(c, alg, NULL) == 0)
+		die("Failed to initialize digest\n");
 
-	SHA256_Final(hash, &c);
+	if (xa->length != EVP_MD_CTX_size(c))
+		die("Hash length mismatch: %d != %d\n", xa->length, EVP_MD_CTX_size(c));
 
-	bin2hex(hash, hex, HASHLEN);
+	while ((len = fread(buf, 1, BUFSZ, f)) != 0) {
+		if (EVP_DigestUpdate(c, buf, len) == 0)
+			die("Failed to update digest\n");
+	}
 
+	len = 0;
+	if (EVP_DigestFinal_ex(c, hash, (unsigned int *)&alg_len) == 0)
+		die("Failed to finalize digest\n");
+
+	if (alg_len != xa->length)
+		die("Final hash length mismatch: %d != %d\n", alg_len, xa->length);
+
+	bin2hex(xa->hash, hash, xa->length);
+
+	EVP_MD_CTX_free(c);
 	free(buf);
-	free(hash);
 }
 
 /**
@@ -105,15 +125,15 @@ void fhash(FILE *f, char *hex)
 void getmtime(FILE *f, xa_t *actual)
 {
 	int fd = fileno(f);
-	struct stat buf;
+	struct stat st;
 
-	fstat(fd, &buf);
+	fstat(fd, &st);
 
-	if (!S_ISREG(buf.st_mode))
+	if (!S_ISREG(st.st_mode))
 		die("Error: this is not a regular file\n");
 
-	actual->s = buf.st_mtim.tv_sec;
-	actual->ns = buf.st_mtim.tv_nsec;
+	actual->s = st.st_mtim.tv_sec;
+	actual->ns = st.st_mtim.tv_nsec;
 }
 
 /**
@@ -131,7 +151,7 @@ void getactualxa(FILE *f, xa_t *actual)
 	/*
 	 * Compute hash
 	 */
-	fhash(f, actual->sha256);
+	fhash(f, actual);
 }
 
 /**
@@ -142,30 +162,34 @@ void getstoredxa(FILE *f, xa_t *stored)
 	int err;
 	int fd = fileno(f);
 	/* Example: 1335974989.123456789 => len=20 */
-	char ts[32];
+	char buf[32];
 	ssize_t len;
 
 	/*
 	 * Initialize to zero-length string - if fgetxattr fails this is what we get
 	 */
-	len = fgetxattr(fd, "user.shatag.sha256", stored->sha256, sizeof(stored->sha256));
-	stored->sha256[len] = '\0';
+	snprintf(buf, sizeof(buf), "user.shatag.%s", stored->alg);
+
+	len = fgetxattr(fd, buf, stored->hash, sizeof(stored->hash));
+	stored->hash[len] = '\0';
 
 	if (len < 0) {
 		if (errno == ENODATA)
-			memset(stored->sha256, 0, sizeof(stored->sha256)); /* Ignore if no attr exists. */
+			memset(stored->hash, 0, sizeof(stored->hash)); /* Ignore if no attr exists. */
 		else
 			die("Error retrieving stored attributes: %m\n");
 	}
+	else if (len != (ssize_t)stored->length * 2 + 1)
+		die("Unexpected attribute size: Expected %zd, got %d.\n", len, stored->length * 2 + 1);
 
 	/*
 	 * Initialize to zero-length string - if fgetxattr fails this is what we get
 	 */
-	len = fgetxattr(fd, "user.shatag.ts", ts, sizeof(ts));
-	ts[len] = '\0';
+	len = fgetxattr(fd, "user.shatag.ts", buf, sizeof(buf));
+	buf[len] = '\0';
 	if (len < 0) {
 		if (errno == ENODATA)
-			memset(stored, 0, sizeof(*stored)); /* Ignore if no attr exists. */
+			memset(stored->hash, 0, sizeof(stored->hash)); /* Ignore if no attr exists. */
 		else
 			die("Error retrieving stored attributes: %m\n");
 
@@ -173,15 +197,15 @@ void getstoredxa(FILE *f, xa_t *stored)
 	}
 
 	/*
-	 * If sscanf fails (because ts is zero-length) variables stay zero
+	 * If sscanf fails (because buf is zero-length) variables stay zero
 	 */
-	err = sscanf(ts, "%llu.%lu", &stored->s, &stored->ns);
+	err = sscanf(buf, "%llu.%lu", &stored->s, &stored->ns);
 	if (err == 1)
 		stored->ns = 0;
 	else if (err != 2)
 		die("Failed to read timestamp: %m\n");
 	else if (stored->ns >= 1000000000)
-		die("Invalid timestamp (ns too large): %s\n", ts);
+		die("Invalid timestamp (ns too large): %s\n", buf);
 }
 
 /**
@@ -190,32 +214,55 @@ void getstoredxa(FILE *f, xa_t *stored)
 int writexa(FILE *f, xa_t *xa)
 {
 	int fd = fileno(f);
-	int flags = 0;
-	int err = 0;
+	int err;
 	char buf[32];
 
-	err = fsetxattr(fd, "user.shatag.sha256", &xa->sha256, sizeof(xa->sha256), flags);
+	snprintf(buf, sizeof(buf), "user.shatag.%s", xa->alg);
+	err = fsetxattr(fd, buf, &xa->hash, xa->length * 2 + 1, 0);
 	if (err != 0)
 		return err;
 
 	snprintf(buf, sizeof(buf), "%llu.%09lu", xa->s, xa->ns);
-	err = fsetxattr(fd, "user.shatag.ts", buf, strlen(buf), flags);
+	err = fsetxattr(fd, "user.shatag.ts", buf, strlen(buf), 0);
 	return err;
 }
 
+static int get_alg_size(const char *alg)
+{
+	EVP_MD const *a = EVP_get_digestbyname(alg);
+	int len;
+
+	if (a == NULL)
+		die("Failed to find hash algorithm \"%s\"\n", alg);
+
+	len = EVP_MD_size(a);
+	if (len > EVP_MAX_MD_SIZE)
+		die("Algorithm \"%s\" is too large: %d > %d\n", alg, len, EVP_MAX_MD_SIZE);
+
+	if (len < 0)
+		die("Algorithm \"%s\" is too small: %d\n", alg, len);
+
+	return len;
+}
 /**
  * Pretty-print metadata
  */
 void formatxa(xa_t *s, char *buf, size_t buflen)
 {
-	char *prettysha;
+	int len;
+	char tmp[EVP_MAX_MD_SIZE * 2 + 1];
 
-	if (strlen(s->sha256) > 0)
-		prettysha = s->sha256;
+	if (strlen(s->hash) > 0)
+		len = snprintf(tmp, sizeof(tmp), "%s", s->hash);
 	else
-		prettysha = "0000000000000000000000000000000000000000000000000000000000000000";
+		len = snprintf(tmp, sizeof(tmp), "%0*d", s->length * 2, 0);
 
-	snprintf(buf, buflen, "%s %llu.%09lu", prettysha, s->s, s->ns);
+	if ((size_t)len >= sizeof(tmp))
+		die("Error: buffer too small: %d > %zu\n", len + 1, sizeof(tmp));
+
+	len = snprintf(buf, buflen, "%s %010llu.%09lu", tmp, s->s, s->ns);
+	if ((size_t)len >= buflen)
+		die("Error: buffer too small: %d > %zu\n", len + 1, buflen);
 }
 
 int main(int argc, char *argv[])
@@ -231,10 +278,12 @@ int main(int argc, char *argv[])
 	if (!f)
 		die("Error: could not open file \"%s\": %m\n", fn);
 
-	xa_t s;
-	xa_t a;
+	xa_t s = (xa_t){ .alg = HASHALG };
+	xa_t a = (xa_t){ .alg = HASHALG };
 	int needsupdate = 0;
 	int havecorrupt = 0;
+
+	a.length = s.length = get_alg_size(s.alg);
 
 	getstoredxa(f, &s);
 	getactualxa(f, &a);
@@ -243,7 +292,7 @@ int main(int argc, char *argv[])
 		/*
 		 * Times are the same, go ahead and compare the hash
 		 */
-		if (strcmp(s.sha256, a.sha256) != 0) {
+		if (strcmp(s.hash, a.hash) != 0) {
 			/*
 			 * Hashes are different, but this may be because
 			 * the file has been modified while we were computing the hash.
@@ -252,7 +301,7 @@ int main(int argc, char *argv[])
 			xa_t a2;
 			getmtime(f, &a2);
 
-			char tmp[HASHLEN * 2 + 32];
+			char tmp[EVP_MAX_MD_SIZE * 2 + 32];
 
 			if (s.s == a2.s && s.ns == a2.ns) {
 				/*
@@ -273,7 +322,7 @@ int main(int argc, char *argv[])
 			printf("<ok> %s\n", fn);
 	}
 	else {
-		char tmp[HASHLEN * 2 + 32];
+		char tmp[EVP_MAX_MD_SIZE * 2 + 32];
 		printf("<outdated> %s\n", fn);
 		formatxa(&s, tmp, sizeof(tmp));
 		printf(" stored: %s\n", tmp);
