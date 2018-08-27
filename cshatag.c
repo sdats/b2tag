@@ -55,9 +55,9 @@ static int check_file(const char *filename, args_t *args)
 	if (strlen(s.hash) != (size_t)get_alg_size(s.alg) * 2)
 		die("Stored hash size mismatch: Expected %d, got %zu.\n", get_alg_size(s.alg), strlen(s.hash));
 
-	xa_calculate(fd, &a);
+	xa_compute(fd, &a);
 	if (strlen(a.hash) != (size_t)get_alg_size(a.alg) * 2)
-		die("Calculated hash size mismatch: Expected %d, got %zu.\n", get_alg_size(a.alg), strlen(a.hash));
+		die("Computed hash size mismatch: Expected %d, got %zu.\n", get_alg_size(a.alg), strlen(a.hash));
 
 	if ((unsigned long)s.alg != (unsigned long)a.alg)
 		die("Algorithm mismatch: \"%s\" != \"%s\"\n", s.alg, a.alg);

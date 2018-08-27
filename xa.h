@@ -38,9 +38,9 @@ typedef struct xa_s
 void getmtime(int fd, xa_t *xa);
 
 /**
- * Calculate the file's current metadata.
+ * Compute the file's current metadata.
  */
-void xa_calculate(int fd, xa_t *xa);
+void xa_compute(int fd, xa_t *xa);
 
 /**
  * Retrieve the file's stored metadata.

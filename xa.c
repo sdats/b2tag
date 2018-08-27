@@ -44,7 +44,7 @@ void getmtime(int fd, xa_t *xa)
 /**
  * File's actual metadata
  */
-void xa_calculate(int fd, xa_t *xa)
+void xa_compute(int fd, xa_t *xa)
 {
 	/*
 	 * Must read mtime *before* file hash,
