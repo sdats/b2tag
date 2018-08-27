@@ -18,7 +18,9 @@
 
 #include "cshatag.h"
 
+#include <ctype.h>
 #include <fcntl.h>
+#include <getopt.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -107,31 +109,61 @@ int check_file(const char *filename)
 		return 0;
 }
 
-void usage(char *program)
+static void usage(const char *program)
 {
-	program = basename(program);
 	printf(
-		"Usage: %s <FILE>...\n"
+		"Usage: %s [OPTION]... <FILE>...\n"
 		"\n"
 		"Display and update xattr-based checksums.\n"
 		"\n"
 		"Positional arguments:\n"
-		"  FILE                  files to checksum\n",
+		"  FILE                  files to checksum\n"
+		"\n"
+		"Optional arguments:\n"
+		"  -h, --help            show this help message and exit\n"
+		"  -V, --version         output version information and exit\n",
 		program);
 }
+
+static const struct option long_opts[] = {
+	{ "help",      no_argument, 0, 'h' },
+	{ "version",   no_argument, 0, 'V' },
+	{ NULL, 0, 0, 0 }
+};
 
 int main(int argc, char *argv[])
 {
 	int ret = 0;
-	char *program = argv[0];
+	char *program = basename(argv[0]);
+	int opt;
 
-	if (argc < 2) {
+	while ((opt = getopt_long(argc, argv, "hV", long_opts, NULL)) != -1) {
+		switch (opt) {
+		case 'h':
+			usage(program);
+			return EXIT_SUCCESS;
+		case 'V':
+			version();
+			return EXIT_SUCCESS;
+		case '?':
+		default:
+			if (isprint(opt))
+				fprintf(stderr, "Unknown argument '-%c' (%#02x)\n", opt, opt);
+			else
+				fprintf(stderr, "Unknown argument -%#02x\n", opt);
+			usage(program);
+			return EXIT_FAILURE;
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1) {
+		fprintf(stderr, "No file specified.\n");
 		usage(program);
 		return EXIT_FAILURE;
 	}
-
-	argc--;
-	argv++;
 
 	while (argc >= 1) {
 		int err = check_file(argv[0]);

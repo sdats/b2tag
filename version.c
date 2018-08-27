@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2012 Jakob Unterwurzacher <jakobunt@gmail.com>
+ * Copyright (C) 2018 Tim Schlueter
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published
@@ -15,11 +15,9 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef CSHATAG_H
-#define CSHATAG_H
+#include <stdio.h>
 
-void die(const char *fmt, ...) __attribute__((noreturn, format(printf, 1, 2)));
-
-void version(void);
-
-#endif /* CSHATAG_H */
+void version(void)
+{
+	printf("cshatag version %s\n", VERSION_STRING);
+}

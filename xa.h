@@ -24,7 +24,7 @@
 /**
  * Holds a file's metadata
  */
-typedef struct
+typedef struct xa_s
 {
 	unsigned long long s;
 	unsigned long ns;
