@@ -75,6 +75,8 @@ void xa_clear(xa_t *xa)
 void xa_read(int fd, xa_t *xa)
 {
 	int err;
+	int end;
+	int start;
 	/* Example: 1335974989.123456789 => len=20 */
 	char buf[32];
 	ssize_t len;
@@ -101,14 +103,16 @@ void xa_read(int fd, xa_t *xa)
 	}
 	buf[len] = '\0';
 
-	/*
-	 * If sscanf fails (because buf is zero-length) variables stay zero
-	 */
-	err = sscanf(buf, "%llu.%lu", &xa->s, &xa->ns);
+	err = sscanf(buf, "%llu.%n%10lu%n", &xa->s, &start, &xa->ns, &end);
 	if (err != 1 && err != 2)
 		die("Failed to read timestamp: %m\n");
-	else if (xa->ns >= 1000000000)
+
+	if (xa->ns >= 1000000000)
 		die("Invalid timestamp (ns too large): %s\n", buf);
+
+	end -= start;
+	while (end++ < 9)
+		xa->ns *= 10;
 }
 
 /**
