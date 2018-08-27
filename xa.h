@@ -26,8 +26,8 @@
  */
 typedef struct xa_s
 {
-	unsigned long long s;
-	unsigned long ns;
+	unsigned long long sec;
+	unsigned long nsec;
 	const char *alg;
 	char hash[MAX_HASH_SIZE * 2 + 1];
 } xa_t;

@@ -37,8 +37,8 @@ void getmtime(int fd, xa_t *xa)
 	if (!S_ISREG(st.st_mode))
 		die("Error: this is not a regular file\n");
 
-	xa->s = st.st_mtim.tv_sec;
-	xa->ns = st.st_mtim.tv_nsec;
+	xa->sec = st.st_mtim.tv_sec;
+	xa->nsec = st.st_mtim.tv_nsec;
 }
 
 /**
@@ -64,8 +64,8 @@ void xa_calculate(int fd, xa_t *xa)
  */
 void xa_clear(xa_t *xa)
 {
-	xa->s = 0;
-	xa->ns = 0;
+	xa->sec = 0;
+	xa->nsec = 0;
 	snprintf(xa->hash, sizeof(xa->hash), "%0*d", get_alg_size(xa->alg) * 2, 0);
 }
 
@@ -103,16 +103,16 @@ void xa_read(int fd, xa_t *xa)
 	}
 	buf[len] = '\0';
 
-	err = sscanf(buf, "%llu.%n%10lu%n", &xa->s, &start, &xa->ns, &end);
+	err = sscanf(buf, "%llu.%n%10lu%n", &xa->sec, &start, &xa->nsec, &end);
 	if (err != 1 && err != 2)
 		die("Failed to read timestamp: %m\n");
 
-	if (xa->ns >= 1000000000)
+	if (xa->nsec >= 1000000000)
 		die("Invalid timestamp (ns too large): %s\n", buf);
 
 	end -= start;
 	while (end++ < 9)
-		xa->ns *= 10;
+		xa->nsec *= 10;
 }
 
 /**
@@ -128,7 +128,7 @@ int xa_write(int fd, xa_t *xa)
 	if (err != 0)
 		return err;
 
-	snprintf(buf, sizeof(buf), "%llu.%09lu", xa->s, xa->ns);
+	snprintf(buf, sizeof(buf), "%llu.%09lu", xa->sec, xa->nsec);
 	err = fsetxattr(fd, "user.shatag.ts", buf, strlen(buf), 0);
 	return err;
 }
@@ -141,7 +141,7 @@ const char *xa_format(xa_t *xa)
 	int len;
 	static char buf[MAX_HASH_SIZE * 2 + 32];
 
-	len = snprintf(buf, sizeof(buf), "%s %010llu.%09lu", xa->hash, xa->s, xa->ns);
+	len = snprintf(buf, sizeof(buf), "%s %010llu.%09lu", xa->hash, xa->sec, xa->nsec);
 
 	if (len < 0)
 		die("Error formatting xa: %m\n");

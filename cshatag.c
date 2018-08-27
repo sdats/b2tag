@@ -68,7 +68,7 @@ static int check_file(const char *filename, args_t *args)
 		/* Hashes are different, check if the file mod time has been updated. */
 		getmtime(fd, &a);
 
-		if (s.s == a.s && s.ns == a.ns) {
+		if (s.sec == a.sec && s.nsec == a.nsec) {
 			/*
 			 * Now, this is either data corruption or somebody modified the file
 			 * and reset the mtime to the last value (to hide the modification?)
@@ -84,9 +84,9 @@ static int check_file(const char *filename, args_t *args)
 			havecorrupt = 1;
 		}
 		else if (args->verbose >= 0) {
-			if (s.s == 0 && s.ns == 0)
+			if (s.sec == 0 && s.nsec == 0)
 				printf("<new> %s\n", filename);
-			else if (s.s < a.s || (s.s == a.s && s.ns < a.ns))
+			else if (s.sec < a.sec || (s.sec == a.sec && s.nsec < a.nsec))
 				printf("<outdated> %s\n", filename);
 			else
 				printf("<backdated> %s\n", filename);
