@@ -38,15 +38,8 @@ void die(const char *fmt, ...)
 	exit(EXIT_FAILURE);
 }
 
-int main(int argc, char *argv[])
+int check_file(const char *filename)
 {
-	char const *myname = argv[0];
-
-	if (argc != 2)
-		die("Usage: %s FILE\n", myname);
-
-	char const *filename = argv[1];
-
 	int fd = open(filename, O_RDONLY);
 	if (fd < 0)
 		die("Error: could not open file \"%s\": %m\n", filename);
@@ -112,4 +105,44 @@ int main(int argc, char *argv[])
 		return 5;
 	else
 		return 0;
+}
+
+void usage(char *program)
+{
+	program = basename(program);
+	printf(
+		"Usage: %s <FILE>...\n"
+		"\n"
+		"Display and update xattr-based checksums.\n"
+		"\n"
+		"Positional arguments:\n"
+		"  FILE                  files to checksum\n",
+		program);
+}
+
+int main(int argc, char *argv[])
+{
+	int ret = 0;
+	char *program = argv[0];
+
+	if (argc < 2) {
+		usage(program);
+		return EXIT_FAILURE;
+	}
+
+	argc--;
+	argv++;
+
+	while (argc >= 1) {
+		int err = check_file(argv[0]);
+		if (err < 0)
+			return ret;
+		else if (ret == 0 && err > 0)
+			ret = err;
+
+		argc--;
+		argv++;
+	}
+
+	return ret;
 }

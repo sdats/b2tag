@@ -3,7 +3,7 @@ MKDIR  ?= mkdir
 
 PREFIX ?= /usr/local
 
-CFLAGS += -MMD -Wall -Wextra -Werror -O2 $(EXTRA_CFLAGS)
+CFLAGS += -MMD -Wall -Wextra -Werror -O2 -D_GNU_SOURCE $(EXTRA_CFLAGS)
 LDLIBS = -lcrypto
 
 OBJECTS = cshatag.o hash.o xa.o
