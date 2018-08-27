@@ -1,40 +1,66 @@
 .\"Generate README file for github: MANWIDTH=80 man ./cshatag.1 > README
-.TH CSHATAG 1 "MAY 2012" Linux "User Manuals"
+.TH CSHATAG 1 "August 2018" "cshatag 0.1" "User Commands"
 .SH NAME
 
 cshatag \- shatag in C
 
 .SH SYNOPSIS
 
-cshatag FILE
+cshatag [-h] [-n] [-q] [-v] [-V] FILE [FILE...]
 
 .SH DESCRIPTION
 
 cshatag is a minimal re-implementation in C of shatag
 .br
-( https://bitbucket.org/maugier/shatag , written in python
-by Maxime Augier ).
+(
+.B https://bitbucket.org/maugier/shatag
+written in python by Maxime Augier )
 
-cshatag is a tool to detect silent data corruption. It writes
-the mtime and the sha256 checksum of a file into the file's
-extended attributes. The filesystem needs to be mounted with
-user_xattr enabled for this to work.
-When run again, it compares stored mtime and checksum. If it
-finds that the mtime is unchanged but the checksum has changed,
-it warns on stderr.
-In any case, the status of the file is printed to stdout
-and the stored checksum is updated.
+cshatag is a tool to detect silent data corruption. It writes the mtime and
+the sha256 checksum of a file into the file's extended attributes. The
+filesystem needs to be mounted with user_xattr enabled for this to work. When
+run again, it compares stored mtime and checksum. If it finds that the mtime
+is unchanged but the checksum has changed, it warns on stderr. In any case,
+the status of the file is printed to stdout and the stored checksum is updated.
 
 File statuses that appear on stdout are:
 .br
-	outdated    mtime has changed
+	new         sha tag has not been set
 .br
-	ok          mtime has not changed, checksum is correct
+	backdated   file has been updated, mtime is older
+.br
+	outdated    file has been updated, mtime is newer
 .br
 	corrupt     mtime has not changed, checksum is wrong
+.br
+	ok          checksum is correct
 
-cshatag aims to be format-compatible with shatag and uses the
-same extended attributes (see the COMPATIBILITY section).
+cshatag aims to be format-compatible with shatag and uses the same extended
+attributes (see the COMPATIBILITY section).
+
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\^\-help
+Output a usage message and exit.
+.TP
+.BR \-n ", " \-\^\-dry\-run
+Do not create or update any checksum attributes. Useful with
+.B --check.
+.TP
+.BR \-q ", " \-\^\-quiet
+Only print errors including checksum failures. Can be specified multiple times
+to print even fewer messages. This is the opposite of
+.B --verbose.
+.TP
+.BR \-v ", " \-\^\-verbose
+Print more verbose messages error and warnings messages. Can be specified
+multiple times to print even more messages. This is the opposite of
+.B --quiet.
+.TP
+.BR \-V ", " \-\^\-version
+Output version information about
+.B cshatag
+and exit.
 
 .SH EXAMPLES
 
@@ -42,12 +68,13 @@ Typically, cshatag will be called from find:
 .br
 # find / -xdev -type f -exec cshatag {} \\; > cshatag.log
 .br
-Errors like corrupt files will then be printed to stderr
-or grep for "corrupt" in cshatag.log.
+Errors like corrupt files will then be printed to stderr or grep for "corrupt"
+in cshatag.log.
 
 To remove the extended attributes from all files:
 .br
-# find / -xdev -type f -exec setfattr -x user.shatag.ts {} \\; -exec setfattr -x user.shatag.sha256 {} \;
+# find / -xdev -type f -exec setfattr -x user.shatag.ts {} \\; -exec setfattr
+-x user.shatag.sha256 {} \;
 
 .SH "RETURN VALUE"
 
@@ -70,12 +97,19 @@ nanosecond precision, while python uses a double for the
 whole mtime and loses the last few digits.
 
 .SH AUTHOR
-Jakob Unterwurzacher <jakobunt@gmail.com>
+Written by Jakob Unterwurzacher, and Tim Schlueter.
 
 .SH COPYRIGHT
-Copyright 2012 Jakob Unterwurzacher. License GPLv2+.
+Copyright \(co 2012 Jakob Unterwurzacher.
+.br
+Copyright \(co 2018 Tim Schlueter.
+
+License GPLv2+: GNU GPL version 2 or later
+<https://www.gnu.org/licenses/licenses.html>.
+
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
 
 .SH "SEE ALSO"
 shatag(1), sha256sum(1), getfattr(1), setfattr(1)
-
 
