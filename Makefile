@@ -3,7 +3,7 @@ MKDIR  ?= mkdir
 
 PREFIX ?= /usr/local
 
-CFLAGS += -Wall -Wextra -Werror -O2 $(EXTRA_CFLAGS)
+CFLAGS += -MMD -Wall -Wextra -Werror -O2 $(EXTRA_CFLAGS)
 LDLIBS = -lcrypto
 
 OBJECTS = cshatag.o hash.o xa.o
@@ -14,6 +14,8 @@ OBJECTS = cshatag.o hash.o xa.o
 .SECONDEXPANSION:
 
 all: cshatag
+
+include *.d
 
 cshatag: $(OBJECTS)
 
