@@ -18,6 +18,13 @@
 #ifndef CSHATAG_H
 #define CSHATAG_H
 
+#include <stdbool.h>
+
+typedef struct args_s {
+	int verbose;
+	bool dry_run;
+} args_t;
+
 void die(const char *fmt, ...) __attribute__((noreturn, format(printf, 1, 2)));
 
 void version(void);

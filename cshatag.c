@@ -40,7 +40,7 @@ void die(const char *fmt, ...)
 	exit(EXIT_FAILURE);
 }
 
-int check_file(const char *filename)
+static int check_file(const char *filename, args_t *args)
 {
 	int fd = open(filename, O_RDONLY);
 	if (fd < 0)
@@ -62,41 +62,51 @@ int check_file(const char *filename)
 	if ((unsigned long)s.alg != (unsigned long)a.alg)
 		die("Algorithm mismatch: \"%s\" != \"%s\"\n", s.alg, a.alg);
 
-	if (s.s == a.s && s.ns == a.ns) {
-		/*
-		 * Times are the same, go ahead and compare the hash
-		 */
-		if (strcmp(s.hash, a.hash) != 0) {
-			/*
-			 * Hashes are different, but this may be because
-			 * the file has been modified while we were computing the hash.
-			 * So check if the mtime ist still the same.
-			 */
-			xa_t a2;
-			getmtime(fd, &a2);
+	if (strcmp(s.hash, a.hash) != 0) {
+		needsupdate = 1;
 
-			if (s.s == a2.s && s.ns == a2.ns) {
-				/*
-				 * Now, this is either data corruption or somebody modified the file
-				 * and reset the mtime to the last value (to hide the modification?)
-				 */
-				fprintf(stderr, "Error: corrupt file \"%s\"\n", filename);
+		/* Hashes are different, check if the file mod time has been updated. */
+		getmtime(fd, &a);
+
+		if (s.s == a.s && s.ns == a.ns) {
+			/*
+			 * Now, this is either data corruption or somebody modified the file
+			 * and reset the mtime to the last value (to hide the modification?)
+			 */
+			fprintf(stderr, "Error: corrupt file \"%s\"\n", filename);
+			if (args->verbose >= -1) {
 				printf("<corrupt> %s\n", filename);
+				if (args->verbose >= 2) {
+					printf(" stored: %s\n", xa_format(&s));
+					printf(" actual: %s\n", xa_format(&a));
+				}
+			}
+			havecorrupt = 1;
+		}
+		else if (args->verbose >= 0) {
+			if (s.s == 0 && s.ns == 0)
+				printf("<new> %s\n", filename);
+			else if (s.s < a.s || (s.s == a.s && s.ns < a.ns))
+				printf("<outdated> %s\n", filename);
+			else
+				printf("<backdated> %s\n", filename);
+
+			if (args->verbose >= 2) {
 				printf(" stored: %s\n", xa_format(&s));
 				printf(" actual: %s\n", xa_format(&a));
-				needsupdate = 1;
-				havecorrupt = 1;
 			}
 		}
-		else
-			printf("<ok> %s\n", filename);
 	}
-	else {
-		printf("<outdated> %s\n", filename);
-		printf(" stored: %s\n", xa_format(&s));
-		printf(" actual: %s\n", xa_format(&a));
-		needsupdate = 1;
+	else if (args->verbose >= 1) {
+		printf("<ok> %s\n", filename);
+		if (args->verbose >= 2) {
+			printf(" stored: %s\n", xa_format(&s));
+			printf(" actual: %s\n", xa_format(&a));
+		}
 	}
+
+	if (args->dry_run)
+		needsupdate = false;
 
 	if (needsupdate && xa_write(fd, &a) != 0)
 		die("Error: could not write extended attributes to file \"%s\": %m\n", filename);
@@ -121,12 +131,18 @@ static void usage(const char *program)
 		"\n"
 		"Optional arguments:\n"
 		"  -h, --help            show this help message and exit\n"
+		"  -n, --dry-run         do not create or update any checksums\n"
+		"  -q, --quiet           only print errors (including checksum failures)\n"
+		"  -v, --verbose         print all checksums (not just missing/changed)\n"
 		"  -V, --version         output version information and exit\n",
 		program);
 }
 
 static const struct option long_opts[] = {
 	{ "help",      no_argument, 0, 'h' },
+	{ "dry-run",   no_argument, 0, 'n' },
+	{ "quiet",     no_argument, 0, 'q' },
+	{ "verbose",   no_argument, 0, 'v' },
 	{ "version",   no_argument, 0, 'V' },
 	{ NULL, 0, 0, 0 }
 };
@@ -135,13 +151,23 @@ int main(int argc, char *argv[])
 {
 	int ret = 0;
 	char *program = basename(argv[0]);
+	args_t args = (args_t){ 0 };
 	int opt;
 
-	while ((opt = getopt_long(argc, argv, "hV", long_opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hnqvV", long_opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			usage(program);
 			return EXIT_SUCCESS;
+		case 'n':
+			args.dry_run = true;
+			break;
+		case 'q':
+			args.verbose--;
+			break;
+		case 'v':
+			args.verbose++;
+			break;
 		case 'V':
 			version();
 			return EXIT_SUCCESS;
@@ -166,7 +192,7 @@ int main(int argc, char *argv[])
 	}
 
 	while (argc >= 1) {
-		int err = check_file(argv[0]);
+		int err = check_file(argv[0], &args);
 		if (err < 0)
 			return ret;
 		else if (ret == 0 && err > 0)
