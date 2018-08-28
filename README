@@ -20,31 +20,49 @@ DESCRIPTION
        stdout and the stored checksum is updated.
 
        File statuses that appear on stdout are:
-            new         sha tag has not been set
             backdated   file has been updated, mtime is older
-            outdated    file has been updated, mtime is newer
             corrupt     mtime has not changed, checksum is wrong
+            new         sha tag has not been set
             ok          checksum is correct
+            outdated    file has been updated, mtime is newer
+            skip        file was not checked  because  of  command-line  argu‐
+       ments. E.g.  --update
 
-       cshatag aims to be format-compatible with  shatag  and  uses  the  same
+       cshatag  aims  to  be  format-compatible  with shatag and uses the same
        extended attributes (see the COMPATIBILITY section).
 
+       If no options are specified, cshatag will compute checksums  for  files
+       that  are  missing  them and update checksums for files which have been
+       modified (as if both the --tag and --update arguments were given).
+
 OPTIONS
+       -c, --check
+              Check the hashes on all specified files.
+
        -h, --help
               Output a usage message and exit.
 
        -n, --dry-run
-              Do  not  create  or  update any checksum attributes. Useful with
+              Do not create or update any  checksum  attributes.  Useful  with
               --check.
 
        -q, --quiet
-              Only print errors including checksum failures. Can be  specified
-              multiple  times  to print even fewer messages. This is the oppo‐
+              Only  print errors including checksum failures. Can be specified
+              multiple times to print even fewer messages. This is  the  oppo‐
               site of --verbose.
 
+       -t, --tag
+              Compute  new  checksums  for  files that don't have them. Do not
+              update any existing checksums (unless --update  is  also  speci‐
+              fied).
+
+       -u, --update
+              Update  outdated  checksums.  Do not add checksums to files that
+              don't have them (unless --tag is also specified).
+
        -v, --verbose
-              Print  more verbose messages error and warnings messages. Can be
-              specified multiple times to print even more  messages.  This  is
+              Print more verbose messages error and warnings messages. Can  be
+              specified  multiple  times  to print even more messages. This is
               the opposite of --quiet.
 
        -V, --version
@@ -53,11 +71,11 @@ OPTIONS
 EXAMPLES
        Typically, cshatag will be called from find:
        # find / -xdev -type f -exec cshatag {} \; > cshatag.log
-       Errors  like  corrupt  files will then be printed to stderr or grep for
+       Errors like corrupt files will then be printed to stderr  or  grep  for
        "corrupt" in cshatag.log.
 
        To remove the extended attributes from all files:
-       # find / -xdev -type f -exec setfattr -x  user.shatag.ts  {}  \;  -exec
+       #  find  /  -xdev  -type f -exec setfattr -x user.shatag.ts {} \; -exec
        setfattr -x user.shatag.sha256 {} ;
 
 RETURN VALUE
@@ -69,7 +87,7 @@ RETURN VALUE
        5 File is corrupt
 
 COMPATIBILITY
-       cshatag  writes  the  user.shatag.ts field with full integer nanosecond
+       cshatag writes the user.shatag.ts field with  full  integer  nanosecond
        precision, while python uses a double for the whole mtime and loses the
        last few digits.
 
@@ -80,10 +98,10 @@ COPYRIGHT
        Copyright © 2012 Jakob Unterwurzacher.
        Copyright © 2018 Tim Schlueter.
 
-       License      GPLv2+:     GNU     GPL     version     2     or     later
+       License     GPLv2+:     GNU     GPL     version     2     or      later
        <https://www.gnu.org/licenses/licenses.html>.
 
-       This is free software: you are free  to  change  and  redistribute  it.
+       This  is  free  software:  you  are free to change and redistribute it.
        There is NO WARRANTY, to the extent permitted by law.
 
 SEE ALSO

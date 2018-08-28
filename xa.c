@@ -46,16 +46,14 @@ void getmtime(int fd, xa_t *xa)
  */
 void xa_compute(int fd, xa_t *xa)
 {
-	/*
-	 * Must read mtime *before* file hash,
-	 * if the file is being modified, hash will be invalid
-	 * but timestamp will be outdated anyway
-	 */
-	getmtime(fd, xa);
+	/* mtime may have already been populated, don't need to grab it again. */
+	if (xa->sec == 0 && xa->nsec == 0) {
+		/* Read mtime before file hash so if the file is being modified, the
+		 * timestamp will be outdated immediately.
+		 */
+		getmtime(fd, xa);
+	}
 
-	/*
-	 * Compute hash
-	 */
 	fhash(fd, xa->hash, sizeof(xa->hash), xa->alg);
 }
 

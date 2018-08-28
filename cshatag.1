@@ -25,20 +25,35 @@ the status of the file is printed to stdout and the stored checksum is updated.
 
 File statuses that appear on stdout are:
 .br
-	new         sha tag has not been set
-.br
 	backdated   file has been updated, mtime is older
-.br
-	outdated    file has been updated, mtime is newer
 .br
 	corrupt     mtime has not changed, checksum is wrong
 .br
+	new         sha tag has not been set
+.br
 	ok          checksum is correct
+.br
+	outdated    file has been updated, mtime is newer
+.br
+	skip        file was not checked because of command-line arguments. E.g.
+.B --update
 
 cshatag aims to be format-compatible with shatag and uses the same extended
 attributes (see the COMPATIBILITY section).
 
+If no options are specified,
+.B cshatag
+will compute checksums for files that are missing them and update checksums
+for files which have been modified (as if both the
+.B --tag
+and
+.B --update
+arguments were given).
+
 .SH OPTIONS
+.TP
+.BR \-c ", " \-\^\-check
+Check the hashes on all specified files.
 .TP
 .BR \-h ", " \-\^\-help
 Output a usage message and exit.
@@ -51,6 +66,18 @@ Do not create or update any checksum attributes. Useful with
 Only print errors including checksum failures. Can be specified multiple times
 to print even fewer messages. This is the opposite of
 .B --verbose.
+.TP
+.BR \-t ", " \-\^\-tag
+Compute new checksums for files that don't have them. Do not update any
+existing checksums (unless
+.B --update
+is also specified).
+.TP
+.BR \-u ", " \-\^\-update
+Update outdated checksums. Do not add checksums to files that don't have them
+(unless
+.B --tag
+is also specified).
 .TP
 .BR \-v ", " \-\^\-verbose
 Print more verbose messages error and warnings messages. Can be specified

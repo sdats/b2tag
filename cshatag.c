@@ -48,12 +48,49 @@ static int check_file(const char *filename, args_t *args)
 
 	xa_t s = (xa_t){ .alg = HASHALG };
 	xa_t a = (xa_t){ .alg = HASHALG };
-	int needsupdate = 0;
-	int havecorrupt = 0;
+	bool needsupdate = false;
+	bool havecorrupt = false;
 
 	xa_read(fd, &s);
 	if (strlen(s.hash) != (size_t)get_alg_size(s.alg) * 2)
 		die("Stored hash size mismatch: Expected %d, got %zu.\n", get_alg_size(s.alg), strlen(s.hash));
+
+	if (!args->check) {
+		/* Quick check. If stored timestamps match, skip hashing. */
+		getmtime(fd, &a);
+
+		if (s.sec == a.sec && s.nsec == a.nsec) {
+			if (args->verbose >= 1) {
+				printf("<ok> %s\n", filename);
+				if (args->verbose >= 2)
+					printf(" stored: %s\n", xa_format(&s));
+			}
+
+			return 0;
+		}
+	}
+
+	/* Skip existing files. */
+	if (args->tag && !args->update && (s.sec != 0 || s.nsec != 0)) {
+		if (args->verbose >= 1) {
+			printf("<skip> %s\n", filename);
+			if (args->verbose >= 2)
+				printf(" stored: %s\n", xa_format(&s));
+		}
+
+		return 0;
+	}
+
+	/* Skip new files. */
+	if (args->update && !args->tag && s.sec == 0 && s.nsec == 0) {
+		if (args->verbose >= 1) {
+			printf("<skip> %s\n", filename);
+			if (args->verbose >= 2)
+				printf(" stored: %s\n", xa_format(&s));
+		}
+
+		return 0;
+	}
 
 	xa_compute(fd, &a);
 	if (strlen(a.hash) != (size_t)get_alg_size(a.alg) * 2)
@@ -63,14 +100,10 @@ static int check_file(const char *filename, args_t *args)
 		die("Algorithm mismatch: \"%s\" != \"%s\"\n", s.alg, a.alg);
 
 	if (strcmp(s.hash, a.hash) != 0) {
-		needsupdate = 1;
-
-		/* Hashes are different, check if the file mod time has been updated. */
-		getmtime(fd, &a);
+		needsupdate = true;
 
 		if (s.sec == a.sec && s.nsec == a.nsec) {
-			/*
-			 * Now, this is either data corruption or somebody modified the file
+			/* Now, this is either data corruption or somebody modified the file
 			 * and reset the mtime to the last value (to hide the modification?)
 			 */
 			fprintf(stderr, "Error: corrupt file \"%s\"\n", filename);
@@ -81,7 +114,7 @@ static int check_file(const char *filename, args_t *args)
 					printf(" actual: %s\n", xa_format(&a));
 				}
 			}
-			havecorrupt = 1;
+			havecorrupt = true;
 		}
 		else if (args->verbose >= 0) {
 			if (s.sec == 0 && s.nsec == 0)
@@ -99,10 +132,8 @@ static int check_file(const char *filename, args_t *args)
 	}
 	else if (args->verbose >= 1) {
 		printf("<ok> %s\n", filename);
-		if (args->verbose >= 2) {
-			printf(" stored: %s\n", xa_format(&s));
+		if (args->verbose >= 2)
 			printf(" actual: %s\n", xa_format(&a));
-		}
 	}
 
 	if (args->dry_run)
@@ -130,18 +161,25 @@ static void usage(const char *program)
 		"  FILE                  files to checksum\n"
 		"\n"
 		"Optional arguments:\n"
+		"  -c, --check           check the hashes on all specified files.\n"
 		"  -h, --help            show this help message and exit\n"
 		"  -n, --dry-run         do not create or update any checksums\n"
 		"  -q, --quiet           only print errors (including checksum failures)\n"
+		"  -t, --tag             compute new checksums for files that don't have them.\n"
+		"                        Do not update existing checksums\n"
+		"  -u, --update          update outdated checksums. Do not create new ones\n"
 		"  -v, --verbose         print all checksums (not just missing/changed)\n"
 		"  -V, --version         output version information and exit\n",
 		program);
 }
 
 static const struct option long_opts[] = {
+	{ "check",     no_argument, 0, 'c' },
 	{ "help",      no_argument, 0, 'h' },
 	{ "dry-run",   no_argument, 0, 'n' },
 	{ "quiet",     no_argument, 0, 'q' },
+	{ "tag",       no_argument, 0, 't' },
+	{ "update",    no_argument, 0, 'u' },
 	{ "verbose",   no_argument, 0, 'v' },
 	{ "version",   no_argument, 0, 'V' },
 	{ NULL, 0, 0, 0 }
@@ -154,8 +192,11 @@ int main(int argc, char *argv[])
 	args_t args = (args_t){ 0 };
 	int opt;
 
-	while ((opt = getopt_long(argc, argv, "hnqvV", long_opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "chnqtuvV", long_opts, NULL)) != -1) {
 		switch (opt) {
+		case 'c':
+			args.check = true;
+			break;
 		case 'h':
 			usage(program);
 			return EXIT_SUCCESS;
@@ -164,6 +205,12 @@ int main(int argc, char *argv[])
 			break;
 		case 'q':
 			args.verbose--;
+			break;
+		case 't':
+			args.tag = true;
+			break;
+		case 'u':
+			args.update = true;
 			break;
 		case 'v':
 			args.verbose++;

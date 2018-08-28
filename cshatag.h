@@ -22,7 +22,10 @@
 
 typedef struct args_s {
 	int verbose;
+	bool check;
 	bool dry_run;
+	bool tag;
+	bool update;
 } args_t;
 
 void die(const char *fmt, ...) __attribute__((noreturn, format(printf, 1, 2)));
