@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2012 Jakob Unterwurzacher <jakobunt@gmail.com>
  * Copyright (C) 2018 Tim Schlueter
  *
@@ -16,6 +16,15 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/** @file
+ * Main file for the cshatag utility.
+ */
+
+/**
+ * @mainpage
+ * @include README
+ */
+
 #include "cshatag.h"
 
 #include <ctype.h>
@@ -26,9 +35,16 @@
 
 #include "xa.h"
 
+/** The hash algorithm to use. */
 #define HASHALG "sha256"
 
 
+/**
+ * Prints an error message to stderr and exits the program.
+ *
+ * @param fmt  The printf-style format string to display.
+ * @param ...  Additional arguments for @p fmt.
+ */
 void die(const char *fmt, ...)
 {
 	va_list ap;
@@ -40,6 +56,18 @@ void die(const char *fmt, ...)
 	exit(EXIT_FAILURE);
 }
 
+/**
+ * Checks if a file's stored hash and timestamp match the current values.
+ *
+ * @param filename  The file to check.
+ * @param args      The parameters governing the behavior of this function.
+ *
+ * @see args_t for more details.
+ *
+ * @retval 0  The file was processed successfully.
+ * @retval >0 An recoverable error occurred.
+ * @retval <0 A fatal error occurred.
+ */
 static int check_file(const char *filename, args_t *args)
 {
 	int fd = open(filename, O_RDONLY);
@@ -57,7 +85,7 @@ static int check_file(const char *filename, args_t *args)
 
 	if (!args->check) {
 		/* Quick check. If stored timestamps match, skip hashing. */
-		getmtime(fd, &a);
+		xa_getmtime(fd, &a);
 
 		if (s.sec == a.sec && s.nsec == a.nsec) {
 			if (args->verbose >= 1) {
@@ -150,6 +178,11 @@ static int check_file(const char *filename, args_t *args)
 		return 0;
 }
 
+/**
+ * Prints a usage message for cshatag.
+ *
+ * @param program  The name of the program being run.
+ */
 static void usage(const char *program)
 {
 	printf(
@@ -173,6 +206,9 @@ static void usage(const char *program)
 		program);
 }
 
+/**
+ * Long options to pass to getopt.
+ */
 static const struct option long_opts[] = {
 	{ "check",     no_argument, 0, 'c' },
 	{ "help",      no_argument, 0, 'h' },
@@ -185,6 +221,15 @@ static const struct option long_opts[] = {
 	{ NULL, 0, 0, 0 }
 };
 
+/**
+ * The entry point to the cshatag utility.
+ *
+ * @param argc  The number of command-line arguments.
+ * @param argv  The command-line arguments.
+ *
+ * @retval 0  Program completed successfully.
+ * @retval !0 An error occurred.
+ */
 int main(int argc, char *argv[])
 {
 	int ret = 0;

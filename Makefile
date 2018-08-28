@@ -44,4 +44,4 @@ $(PREFIX)/%: $$(@F) | $$(@D)/
 install: $(PREFIX)/bin/cshatag $(PREFIX)/share/man/man1/cshatag.1
 
 clean:
-	$(RM) cshatag .version $(OBJECTS)
+	$(RM) cshatag .version $(OBJECTS) $(OBJECTS:.o=.d)

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2012 Jakob Unterwurzacher <jakobunt@gmail.com>
  * Copyright (C) 2018 Tim Schlueter
  *
@@ -16,16 +16,27 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/** @file
+ * Hash helper functions for cshatag.
+ */
+
 #include "hash.h"
 
 #include <unistd.h>
 
 #include "cshatag.h"
 
+/** The size of the file read buffer. */
 #define BUFSZ 65536
 
 /**
- * ASCII hex representation of char array
+ * Converts a raw array into a hex string.
+ *
+ * @param out  The buffer to store the hex string in.
+ * @param bin  The input raw data array.
+ * @param len  The length of @p bin.
+ *
+ * @note @p out must be at least (@p len * 2) + 1 in length.
  */
 static void bin2hex(char *out, unsigned char *bin, int len)
 {
@@ -41,7 +52,14 @@ static void bin2hex(char *out, unsigned char *bin, int len)
 }
 
 /**
- * hash of contents of f, ASCII hex representation
+ * Hash the contents of file @p fd using the @p alg hash algorithm.
+ *
+ * Then store the ASCII hex representation of the resulting hash in @p hashbuf.
+ *
+ * @param fd      The file to hash.
+ * @param hashbuf Where to store the resulting hash value.
+ * @param hashlen The length of @p hash.
+ * @param alg     The hash algorithm to use.
  */
 void fhash(int fd, char *hashbuf, int hashlen, const char *alg)
 {
@@ -97,6 +115,13 @@ void fhash(int fd, char *hashbuf, int hashlen, const char *alg)
 	free(buf);
 }
 
+/**
+ * Returns the hash size of @p alg.
+ *
+ * @param alg  The algorithm to use.
+ *
+ * @returns Returns the hash size of the @p alg hash algorithm.
+ */
 int get_alg_size(const char *alg)
 {
 	EVP_MD const *a = EVP_get_digestbyname(alg);

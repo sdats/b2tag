@@ -2,3 +2,6 @@
 cshatag
 # Ignore the .version file
 .version
+# Ignore doxygen directories
+html
+latex

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2012 Jakob Unterwurzacher <jakobunt@gmail.com>
  * Copyright (C) 2018 Tim Schlueter
  *
@@ -16,6 +16,10 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/** @file
+ * Functions for dealing with extended attributes for cshatag.
+ */
+
 #include "xa.h"
 
 #include <errno.h>
@@ -26,9 +30,12 @@
 #include "cshatag.h"
 
 /**
- * Nanosecond precision mtime of a file
+ * Retrieve the last modified timestamp of @p fd and store it in @p xa.
+ *
+ * @param fd  The file to retrieve the last modified time for.
+ * @param xa  The extended attribute structure to store the last mtime in.
  */
-void getmtime(int fd, xa_t *xa)
+void xa_getmtime(int fd, xa_t *xa)
 {
 	struct stat st;
 
@@ -42,7 +49,13 @@ void getmtime(int fd, xa_t *xa)
 }
 
 /**
- * File's actual metadata
+ * Hash the contents of @p fd and store the result in @p xa.
+ *
+ * Additionally, retrieve the last mtime of @p fd and store it in @p xa
+ * (unless @p xa already contains a non-zero mtime).
+ *
+ * @param fd  The file to compute the hash of.
+ * @param xa  The extended attribute structure to store the values in.
  */
 void xa_compute(int fd, xa_t *xa)
 {
@@ -51,16 +64,22 @@ void xa_compute(int fd, xa_t *xa)
 		/* Read mtime before file hash so if the file is being modified, the
 		 * timestamp will be outdated immediately.
 		 */
-		getmtime(fd, xa);
+		xa_getmtime(fd, xa);
 	}
 
 	fhash(fd, xa->hash, sizeof(xa->hash), xa->alg);
 }
 
 /**
- * Clear an xa structure.
+ * Clear the timestamp and hash values in @p xa.
+ *
+ * @li @p xa->alg will be left untouched.
+ * @li @p xa->sec and @p xa->nsec will both be set to 0.
+ * @li @p xa->hash will be set to a string of ASCII '0's the same length as @p xa->alg.
+ *
+ * @param xa  The extended attribute structure to clear.
  */
-void xa_clear(xa_t *xa)
+static void xa_clear(xa_t *xa)
 {
 	xa->sec = 0;
 	xa->nsec = 0;
@@ -68,7 +87,10 @@ void xa_clear(xa_t *xa)
 }
 
 /**
- * File's stored metadata
+ * Retrieve the stored extended attributes for @p fd and store it in @p xa.
+ *
+ * @param fd  The file to retrieve the extended attributes from.
+ * @param xa  The extended attribute structure to store the values in.
  */
 void xa_read(int fd, xa_t *xa)
 {
@@ -114,7 +136,13 @@ void xa_read(int fd, xa_t *xa)
 }
 
 /**
- * Write out metadata to file's extended attributes
+ * Update the stored extended attributes for @p fd from @p xa.
+ *
+ * @param fd  The file to update the extended attributes of.
+ * @param xa  The extended attribute structure to store to disk.
+ *
+ * @retval 0  The extended attributes were successfully updated.
+ * @retval !0 An error occurred updating the extended attributes.
  */
 int xa_write(int fd, xa_t *xa)
 {
@@ -132,7 +160,14 @@ int xa_write(int fd, xa_t *xa)
 }
 
 /**
- * Pretty-print metadata
+ * Convert an extended attribute structure into a human-readable form for printing.
+ *
+ * @param xa  The extended attribute structure to convert.
+ *
+ * @returns A string containing the human-readable extended attribute structure.
+ *
+ * @note This function uses a static buffer to format the string. It will be
+ *       overwritten by successive calls to xa_format() and is not thread-safe.
  */
 const char *xa_format(xa_t *xa)
 {

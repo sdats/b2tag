@@ -1,5 +1,6 @@
-/**
+/*
  * Copyright (C) 2012 Jakob Unterwurzacher <jakobunt@gmail.com>
+ * Copyright (C) 2018 Tim Schlueter
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published
@@ -15,21 +16,43 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/** @file
+ * Shared functions for the cshatag utility.
+ */
+
 #ifndef CSHATAG_H
 #define CSHATAG_H
 
 #include <stdbool.h>
 
+/**
+ * The options passed to the program on the command-line.
+ */
 typedef struct args_s {
+	/** The verbosity level (how many messages to print). */
 	int verbose;
+	/** Whether to check the hashes on up-to-date files. */
 	bool check;
+	/** Don't change any extended attributes. */
 	bool dry_run;
+	/** Only compute the checksums of new files. */
 	bool tag;
+	/** Only compute the checksums of outdated files. */
 	bool update;
 } args_t;
 
+/**
+ * Prints an error message to stderr and exits the program.
+ *
+ * @param fmt  The printf-style format string to display.
+ * @param ...  Additional arguments for @p fmt.
+ */
 void die(const char *fmt, ...) __attribute__((noreturn, format(printf, 1, 2)));
 
+
+/**
+ * Prints version information for cshatag.
+ */
 void version(void);
 
 #endif /* CSHATAG_H */

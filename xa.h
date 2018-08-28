@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2012 Jakob Unterwurzacher <jakobunt@gmail.com>
  * Copyright (C) 2018 Tim Schlueter
  *
@@ -16,44 +16,77 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/** @file
+ * Extended attribute functions and data structures.
+ */
+
 #ifndef XA_H
 #define XA_H
 
 #include "hash.h"
 
 /**
- * Holds a file's metadata
+ * Metadata structure for cshatag.
  */
 typedef struct xa_s
 {
+	/** The file's last modified time (in seconds since the Unix epoch). */
 	unsigned long long sec;
+	/** The file's last modified time (in nanoseconds since @p sec). */
 	unsigned long nsec;
+	/** The hash algorithm to use. */
 	const char *alg;
+	/** The file data's hash value as an ASCII hex string. */
 	char hash[MAX_HASH_SIZE * 2 + 1];
 } xa_t;
 
 /**
- * Nanosecond precision mtime of a file
+ * Retrieve the last modified timestamp of @p fd and store it in @p xa.
+ *
+ * @param fd  The file to retrieve the last modified time for.
+ * @param xa  The extended attribute structure to store the last mtime in.
  */
-void getmtime(int fd, xa_t *xa);
+void xa_getmtime(int fd, xa_t *xa);
 
 /**
- * Compute the file's current metadata.
+ * Hash the contents of @p fd and store the result in @p xa.
+ *
+ * Additionally, retrieve the last mtime of @p fd and store it in @p xa
+ * (unless @p xa already contains a non-zero mtime).
+ *
+ * @param fd  The file to compute the hash of.
+ * @param xa  The extended attribute structure to store the values in.
  */
 void xa_compute(int fd, xa_t *xa);
 
 /**
- * Retrieve the file's stored metadata.
+ * Retrieve the stored extended attributes for @p fd and store it in @p xa.
+ *
+ * @param fd  The file to retrieve the extended attributes from.
+ * @param xa  The extended attribute structure to store the values in.
  */
 void xa_read(int fd, xa_t *xa);
 
 /**
- * Write out metadata to file's extended attributes
+ * Update the stored extended attributes for @p fd from @p xa.
+ *
+ * @param fd  The file to update the extended attributes of.
+ * @param xa  The extended attribute structure to store to disk.
+ *
+ * @retval 0  The extended attributes were successfully updated.
+ * @retval !0 An error occurred updating the extended attributes.
  */
 int xa_write(int fd, xa_t *xa);
 
 /**
- * Pretty-print metadata
+ * Convert an extended attribute structure into a human-readable form for printing.
+ *
+ * @param xa  The extended attribute structure to convert.
+ *
+ * @returns A string containing the human-readable extended attribute structure.
+ *
+ * @note This function uses a static buffer to format the string. It will be
+ *       overwritten by successive calls to xa_format() and is not thread-safe.
  */
 const char *xa_format(xa_t *xa);
 

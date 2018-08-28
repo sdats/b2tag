@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2018 Tim Schlueter
  *
  * This program is free software; you can redistribute it and/or modify
@@ -15,8 +15,15 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/** @file
+ * Contains the version() function.
+ */
+
 #include <stdio.h>
 
+/**
+ * Prints version information for cshatag.
+ */
 void version(void)
 {
 	printf("cshatag version %s\n", VERSION_STRING);
