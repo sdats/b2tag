@@ -7,7 +7,7 @@ CFLAGS += -Wall -Wextra -Werror -O2 -D_GNU_SOURCE
 CFLAGS += $(EXTRA_CFLAGS)
 LDLIBS = -lcrypto
 
-OBJECTS = cshatag.o hash.o version.o xa.o
+OBJECTS = cshatag.o hash.o utilities.o xa.o
 
 VERSION ?= $(shell git describe --dirty=+ 2>/dev/null || echo 0.1-nogit)
 
@@ -33,8 +33,8 @@ endif
 	echo '$(VERSION)' > $@
 
 # Rebuild the 'version' output any time the version string changes
-version.o version.d: CFLAGS += -DVERSION_STRING='"$(VERSION)"'
-version.o version.d: .version
+utilities.o utilities.d: CFLAGS += -DVERSION_STRING='"$(VERSION)"'
+utilities.o utilities.d: .version
 
 # Don't delete any created directories
 .PRECIOUS: $(PREFIX)/%/

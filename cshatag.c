@@ -33,28 +33,12 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "utilities.h"
 #include "xa.h"
 
 /** The hash algorithm to use. */
 #define HASHALG "sha256"
 
-
-/**
- * Prints an error message to stderr and exits the program.
- *
- * @param fmt  The printf-style format string to display.
- * @param ...  Additional arguments for @p fmt.
- */
-void die(const char *fmt, ...)
-{
-	va_list ap;
-
-	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
-	va_end(ap);
-
-	exit(EXIT_FAILURE);
-}
 
 /**
  * Checks if a file's stored hash and timestamp match the current values.

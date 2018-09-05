@@ -1,5 +1,4 @@
 /*
- * Copyright (C) 2012 Jakob Unterwurzacher <jakobunt@gmail.com>
  * Copyright (C) 2018 Tim Schlueter
  *
  * This program is free software; you can redistribute it and/or modify

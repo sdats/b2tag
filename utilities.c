@@ -16,28 +16,35 @@
  */
 
 /** @file
- * Shared functions for the cshatag utility.
+ * Contains miscellaneous utility functions.
  */
 
-#ifndef CSHATAG_H
-#define CSHATAG_H
+#include "utilities.h"
 
-#include <stdbool.h>
+#include <stdarg.h>
+#include <stdio.h>
 
 /**
- * The options passed to the program on the command-line.
+ * Prints an error message to stderr and exits the program.
+ *
+ * @param fmt  The printf-style format string to display.
+ * @param ...  Additional arguments for @p fmt.
  */
-typedef struct args_s {
-	/** The verbosity level (how many messages to print). */
-	int verbose;
-	/** Whether to check the hashes on up-to-date files. */
-	bool check;
-	/** Don't change any extended attributes. */
-	bool dry_run;
-	/** Only compute the checksums of new files. */
-	bool tag;
-	/** Only compute the checksums of outdated files. */
-	bool update;
-} args_t;
+void die(const char *fmt, ...)
+{
+	va_list ap;
 
-#endif /* CSHATAG_H */
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+
+	exit(EXIT_FAILURE);
+}
+
+/**
+ * Prints version information for cshatag.
+ */
+void version(void)
+{
+	printf("cshatag version %s\n", VERSION_STRING);
+}

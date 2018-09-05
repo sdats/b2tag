@@ -27,7 +27,7 @@
 #include <sys/stat.h>
 #include <sys/xattr.h>
 
-#include "cshatag.h"
+#include "utilities.h"
 
 /**
  * Retrieve the last modified timestamp of @p fd and store it in @p xa.
@@ -106,10 +106,10 @@ void xa_read(int fd, xa_t *xa)
 	snprintf(buf, sizeof(buf), "user.shatag.%s", xa->alg);
 	len = fgetxattr(fd, buf, xa->hash, sizeof(xa->hash) - 1);
 	if (len < 0) {
-		if (errno == ENODATA)
-			return;
+		if (errno != ENODATA)
+			die("Error retrieving stored attributes: %m\n");
 
-		die("Error retrieving stored attributes: %m\n");
+		return;
 	}
 	xa->hash[len] = '\0';
 
@@ -127,12 +127,12 @@ void xa_read(int fd, xa_t *xa)
 	if (err != 1 && err != 2)
 		die("Failed to read timestamp: %m\n");
 
-	if (xa->nsec >= 1000000000)
-		die("Invalid timestamp (ns too large): %s\n", buf);
-
 	end -= start;
 	while (end++ < 9)
 		xa->nsec *= 10;
+
+	if (xa->nsec >= 1000000000)
+		die("Invalid timestamp (ns too large): %s\n", buf);
 }
 
 /**
