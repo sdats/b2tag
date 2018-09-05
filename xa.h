@@ -48,10 +48,13 @@ typedef struct xa_s
  *
  * @param fd  The file to compute the hash of.
  * @param xa  The extended attribute structure to store the values in.
+ *
+ * @retval 0  The contents of @p fd were successfully hashed.
+ * @retval !0 An error occurred while hashing the contents of @p fd.
  */
-static inline void xa_compute(int fd, xa_t *xa)
+static inline int xa_compute(int fd, xa_t *xa)
 {
-	fhash(fd, xa->hash, sizeof(xa->hash), xa->alg);
+	return fhash(fd, xa->hash, sizeof(xa->hash), xa->alg);
 }
 
 /**
@@ -59,8 +62,11 @@ static inline void xa_compute(int fd, xa_t *xa)
  *
  * @param fd  The file to retrieve the extended attributes from.
  * @param xa  The extended attribute structure to store the values in.
+ *
+ * @retval 0  The extended attributes were successfully read.
+ * @retval !0 An error occurred reading the extended attributes.
  */
-void xa_read(int fd, xa_t *xa);
+int xa_read(int fd, xa_t *xa);
 
 /**
  * Update the stored extended attributes for @p fd from @p xa.

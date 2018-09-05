@@ -49,8 +49,11 @@ static void xa_clear(xa_t *xa)
  *
  * @param fd  The file to retrieve the extended attributes from.
  * @param xa  The extended attribute structure to store the values in.
+ *
+ * @retval 0  The extended attributes were successfully read.
+ * @retval !0 An error occurred reading the extended attributes.
  */
-void xa_read(int fd, xa_t *xa)
+int xa_read(int fd, xa_t *xa)
 {
 	int err;
 	int end;
@@ -67,7 +70,7 @@ void xa_read(int fd, xa_t *xa)
 		if (errno != ENODATA)
 			die("Error retrieving stored attributes: %m\n");
 
-		return;
+		return -1;
 	}
 	xa->hash[len] = '\0';
 
@@ -77,7 +80,7 @@ void xa_read(int fd, xa_t *xa)
 			die("Error retrieving stored attributes: %m\n");
 
 		xa_clear(xa);
-		return;
+		return -1;
 	}
 	buf[len] = '\0';
 
@@ -91,6 +94,8 @@ void xa_read(int fd, xa_t *xa)
 
 	if (xa->mtime.tv_nsec >= 1000000000)
 		die("Invalid timestamp (ns too large): %s\n", buf);
+
+	return 0;
 }
 
 /**

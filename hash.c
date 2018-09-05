@@ -60,8 +60,11 @@ static void bin2hex(char *out, unsigned char *bin, int len)
  * @param hashbuf Where to store the resulting hash value.
  * @param hashlen The length of @p hash.
  * @param alg     The hash algorithm to use.
+ *
+ * @retval 0  The contents of @p fd were successfully hashed.
+ * @retval !0 An error occurred while hashing the contents of @p fd.
  */
-void fhash(int fd, char *hashbuf, int hashlen, const char *alg)
+int fhash(int fd, char *hashbuf, int hashlen, const char *alg)
 {
 	EVP_MD_CTX *c;
 	EVP_MD const *a;
@@ -113,6 +116,8 @@ void fhash(int fd, char *hashbuf, int hashlen, const char *alg)
 
 	EVP_MD_CTX_free(c);
 	free(buf);
+
+	return 0;
 }
 
 /**
