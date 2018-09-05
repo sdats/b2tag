@@ -62,16 +62,18 @@ static int check_file(const char *filename, args_t *args)
 	xa_t a = (xa_t){ .alg = HASHALG };
 	bool needsupdate = false;
 	bool havecorrupt = false;
+	struct stat st;
 
 	xa_read(fd, &s);
 	if (strlen(s.hash) != (size_t)get_alg_size(s.alg) * 2)
 		die("Stored hash size mismatch: Expected %d, got %zu.\n", get_alg_size(s.alg), strlen(s.hash));
 
+	fstat(fd, &st);
+	a.mtime = st.st_mtim;
+
 	if (!args->check) {
 		/* Quick check. If stored timestamps match, skip hashing. */
-		xa_getmtime(fd, &a);
-
-		if (s.sec == a.sec && s.nsec == a.nsec) {
+		if (ts_compare(s.mtime, a.mtime) == 0) {
 			if (args->verbose >= 1) {
 				printf("<ok> %s\n", filename);
 				if (args->verbose >= 2)
@@ -83,7 +85,7 @@ static int check_file(const char *filename, args_t *args)
 	}
 
 	/* Skip existing files. */
-	if (args->tag && !args->update && (s.sec != 0 || s.nsec != 0)) {
+	if (args->tag && !args->update && (s.mtime.tv_sec != 0 || s.mtime.tv_nsec != 0)) {
 		if (args->verbose >= 1) {
 			printf("<skip> %s\n", filename);
 			if (args->verbose >= 2)
@@ -94,7 +96,7 @@ static int check_file(const char *filename, args_t *args)
 	}
 
 	/* Skip new files. */
-	if (args->update && !args->tag && s.sec == 0 && s.nsec == 0) {
+	if (args->update && !args->tag && s.mtime.tv_sec == 0 && s.mtime.tv_nsec == 0) {
 		if (args->verbose >= 1) {
 			printf("<skip> %s\n", filename);
 			if (args->verbose >= 2)
@@ -114,7 +116,7 @@ static int check_file(const char *filename, args_t *args)
 	if (strcmp(s.hash, a.hash) != 0) {
 		needsupdate = true;
 
-		if (s.sec == a.sec && s.nsec == a.nsec) {
+		if (ts_compare(s.mtime, a.mtime) == 0) {
 			/* Now, this is either data corruption or somebody modified the file
 			 * and reset the mtime to the last value (to hide the modification?)
 			 */
@@ -129,9 +131,9 @@ static int check_file(const char *filename, args_t *args)
 			havecorrupt = true;
 		}
 		else if (args->verbose >= 0) {
-			if (s.sec == 0 && s.nsec == 0)
+			if (s.mtime.tv_sec == 0 && s.mtime.tv_nsec == 0)
 				printf("<new> %s\n", filename);
-			else if (s.sec < a.sec || (s.sec == a.sec && s.nsec < a.nsec))
+			else if (ts_compare(s.mtime, a.mtime) < 0)
 				printf("<outdated> %s\n", filename);
 			else
 				printf("<backdated> %s\n", filename);

@@ -23,6 +23,8 @@
 #ifndef XA_H
 #define XA_H
 
+#include <sys/stat.h>
+
 #include "hash.h"
 
 /**
@@ -30,23 +32,13 @@
  */
 typedef struct xa_s
 {
-	/** The file's last modified time (in seconds since the Unix epoch). */
-	unsigned long long sec;
-	/** The file's last modified time (in nanoseconds since @p sec). */
-	unsigned long nsec;
+	/** The file's last modified time. */
+	struct timespec mtime;
 	/** The hash algorithm to use. */
 	const char *alg;
 	/** The file data's hash value as an ASCII hex string. */
 	char hash[MAX_HASH_SIZE * 2 + 1];
 } xa_t;
-
-/**
- * Retrieve the last modified timestamp of @p fd and store it in @p xa.
- *
- * @param fd  The file to retrieve the last modified time for.
- * @param xa  The extended attribute structure to store the last mtime in.
- */
-void xa_getmtime(int fd, xa_t *xa);
 
 /**
  * Hash the contents of @p fd and store the result in @p xa.
@@ -57,7 +49,10 @@ void xa_getmtime(int fd, xa_t *xa);
  * @param fd  The file to compute the hash of.
  * @param xa  The extended attribute structure to store the values in.
  */
-void xa_compute(int fd, xa_t *xa);
+static inline void xa_compute(int fd, xa_t *xa)
+{
+	fhash(fd, xa->hash, sizeof(xa->hash), xa->alg);
+}
 
 /**
  * Retrieve the stored extended attributes for @p fd and store it in @p xa.

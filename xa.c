@@ -30,59 +30,17 @@
 #include "utilities.h"
 
 /**
- * Retrieve the last modified timestamp of @p fd and store it in @p xa.
- *
- * @param fd  The file to retrieve the last modified time for.
- * @param xa  The extended attribute structure to store the last mtime in.
- */
-void xa_getmtime(int fd, xa_t *xa)
-{
-	struct stat st;
-
-	fstat(fd, &st);
-
-	if (!S_ISREG(st.st_mode))
-		die("Error: this is not a regular file\n");
-
-	xa->sec = st.st_mtim.tv_sec;
-	xa->nsec = st.st_mtim.tv_nsec;
-}
-
-/**
- * Hash the contents of @p fd and store the result in @p xa.
- *
- * Additionally, retrieve the last mtime of @p fd and store it in @p xa
- * (unless @p xa already contains a non-zero mtime).
- *
- * @param fd  The file to compute the hash of.
- * @param xa  The extended attribute structure to store the values in.
- */
-void xa_compute(int fd, xa_t *xa)
-{
-	/* mtime may have already been populated, don't need to grab it again. */
-	if (xa->sec == 0 && xa->nsec == 0) {
-		/* Read mtime before file hash so if the file is being modified, the
-		 * timestamp will be outdated immediately.
-		 */
-		xa_getmtime(fd, xa);
-	}
-
-	fhash(fd, xa->hash, sizeof(xa->hash), xa->alg);
-}
-
-/**
  * Clear the timestamp and hash values in @p xa.
  *
  * @li @p xa->alg will be left untouched.
- * @li @p xa->sec and @p xa->nsec will both be set to 0.
+ * @li @p xa->mtime will be zeroed.
  * @li @p xa->hash will be set to a string of ASCII '0's the same length as @p xa->alg.
  *
  * @param xa  The extended attribute structure to clear.
  */
 static void xa_clear(xa_t *xa)
 {
-	xa->sec = 0;
-	xa->nsec = 0;
+	memset(&xa->mtime, 0, sizeof(xa->mtime));
 	snprintf(xa->hash, sizeof(xa->hash), "%0*d", get_alg_size(xa->alg) * 2, 0);
 }
 
@@ -123,15 +81,15 @@ void xa_read(int fd, xa_t *xa)
 	}
 	buf[len] = '\0';
 
-	err = sscanf(buf, "%llu.%n%10lu%n", &xa->sec, &start, &xa->nsec, &end);
+	err = sscanf(buf, "%lu.%n%10lu%n", &xa->mtime.tv_sec, &start, &xa->mtime.tv_nsec, &end);
 	if (err != 1 && err != 2)
 		die("Failed to read timestamp: %m\n");
 
 	end -= start;
 	while (end++ < 9)
-		xa->nsec *= 10;
+		xa->mtime.tv_nsec *= 10;
 
-	if (xa->nsec >= 1000000000)
+	if (xa->mtime.tv_nsec >= 1000000000)
 		die("Invalid timestamp (ns too large): %s\n", buf);
 }
 
@@ -154,7 +112,7 @@ int xa_write(int fd, xa_t *xa)
 	if (err != 0)
 		return err;
 
-	snprintf(buf, sizeof(buf), "%llu.%09lu", xa->sec, xa->nsec);
+	snprintf(buf, sizeof(buf), "%lu.%09lu", xa->mtime.tv_sec, xa->mtime.tv_nsec);
 	err = fsetxattr(fd, "user.shatag.ts", buf, strlen(buf), 0);
 	return err;
 }
@@ -174,7 +132,7 @@ const char *xa_format(xa_t *xa)
 	int len;
 	static char buf[MAX_HASH_SIZE * 2 + 32];
 
-	len = snprintf(buf, sizeof(buf), "%s %010llu.%09lu", xa->hash, xa->sec, xa->nsec);
+	len = snprintf(buf, sizeof(buf), "%s %010lu.%09lu", xa->hash, xa->mtime.tv_sec, xa->mtime.tv_nsec);
 
 	if (len < 0)
 		die("Error formatting xa: %m\n");
