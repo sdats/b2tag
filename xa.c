@@ -40,6 +40,7 @@
  */
 static void xa_clear(xa_t *xa)
 {
+	assert(xa != NULL);
 	memset(&xa->mtime, 0, sizeof(xa->mtime));
 	snprintf(xa->hash, sizeof(xa->hash), "%0*d", get_alg_size(xa->alg) * 2, 0);
 }
@@ -64,36 +65,39 @@ int xa_read(int fd, xa_t *xa)
 
 	xa_clear(xa);
 
+	assert(fd >= 0);
+
 	snprintf(buf, sizeof(buf), "user.shatag.%s", xa->alg);
 	len = fgetxattr(fd, buf, xa->hash, sizeof(xa->hash) - 1);
-	if (len < 0) {
-		if (errno != ENODATA)
-			die("Error retrieving stored attributes: %m\n");
-
+	if (len < 0)
 		return -1;
-	}
+
 	xa->hash[len] = '\0';
 
 	len = fgetxattr(fd, "user.shatag.ts", buf, sizeof(buf) - 1);
 	if (len < 0) {
-		if (errno != ENODATA)
-			die("Error retrieving stored attributes: %m\n");
-
 		xa_clear(xa);
 		return -1;
 	}
+
 	buf[len] = '\0';
 
 	err = sscanf(buf, "%lu.%n%10lu%n", &xa->mtime.tv_sec, &start, &xa->mtime.tv_nsec, &end);
-	if (err != 1 && err != 2)
-		die("Failed to read timestamp: %m\n");
+	if (err < 1) {
+		fprintf(stderr, "Malformed timestamp: %m\n");
+		xa_clear(xa);
+		return -1;
+	}
 
 	end -= start;
 	while (end++ < 9)
 		xa->mtime.tv_nsec *= 10;
 
-	if (xa->mtime.tv_nsec >= 1000000000)
-		die("Invalid timestamp (ns too large): %s\n", buf);
+	if (xa->mtime.tv_nsec >= 1000000000) {
+		fprintf(stderr, "Invalid timestamp (ns too large): %s\n", buf);
+		xa_clear(xa);
+		return -1;
+	}
 
 	return 0;
 }
@@ -112,13 +116,20 @@ int xa_write(int fd, xa_t *xa)
 	int err;
 	char buf[32];
 
+	assert(fd >= 0);
+	assert(xa != NULL);
+
 	snprintf(buf, sizeof(buf), "user.shatag.%s", xa->alg);
 	err = fsetxattr(fd, buf, &xa->hash, strlen(xa->hash), 0);
-	if (err != 0)
+	if (err != 0) {
+		fprintf(stderr, "Failed to set `%s' xattr: %m\n", buf);
 		return err;
+	}
 
 	snprintf(buf, sizeof(buf), "%lu.%09lu", xa->mtime.tv_sec, xa->mtime.tv_nsec);
 	err = fsetxattr(fd, "user.shatag.ts", buf, strlen(buf), 0);
+	if (err != 0)
+		fprintf(stderr, "Failed to set `%s' xattr: %m\n", "user.shatag.ts");
 	return err;
 }
 
@@ -136,6 +147,8 @@ const char *xa_format(xa_t *xa)
 {
 	int len;
 	static char buf[MAX_HASH_SIZE * 2 + 32];
+
+	assert(xa != NULL);
 
 	len = snprintf(buf, sizeof(buf), "%s %010lu.%09lu", xa->hash, xa->mtime.tv_sec, xa->mtime.tv_nsec);
 

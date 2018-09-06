@@ -23,6 +23,7 @@
 #ifndef XA_H
 #define XA_H
 
+#include <assert.h>
 #include <sys/stat.h>
 
 #include "hash.h"
@@ -54,6 +55,8 @@ typedef struct xa_s
  */
 static inline int xa_compute(int fd, xa_t *xa)
 {
+	assert(fd >= 0);
+	assert(xa != NULL);
 	return fhash(fd, xa->hash, sizeof(xa->hash), xa->alg);
 }
 

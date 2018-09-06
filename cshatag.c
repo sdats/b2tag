@@ -27,6 +27,7 @@
 
 #include "cshatag.h"
 
+#include <assert.h>
 #include <ctype.h>
 #include <fcntl.h>
 #include <getopt.h>
@@ -61,6 +62,8 @@ static int check_file(const char *filename)
 	xa_t s;
 	bool needsupdate = false;
 	bool havecorrupt = false;
+
+	assert(filename != NULL);
 
 	a = s = (xa_t){ .alg = args.alg };
 
@@ -114,8 +117,7 @@ static int check_file(const char *filename)
 	if (strlen(a.hash) != (size_t)get_alg_size(a.alg) * 2)
 		die("Computed hash size mismatch: Expected %d, got %zu.\n", get_alg_size(a.alg), strlen(a.hash));
 
-	if ((unsigned long)s.alg != (unsigned long)a.alg)
-		die("Algorithm mismatch: \"%s\" != \"%s\"\n", s.alg, a.alg);
+	assert((unsigned long)s.alg == (unsigned long)a.alg);
 
 	if (strcmp(s.hash, a.hash) != 0) {
 		needsupdate = true;

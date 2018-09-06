@@ -22,6 +22,7 @@
 
 #include "hash.h"
 
+#include <assert.h>
 #include <unistd.h>
 
 #include "utilities.h"
@@ -42,6 +43,9 @@ static void bin2hex(char *out, unsigned char *bin, int len)
 {
 	char hexval[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 	int i;
+
+	assert(out != NULL);
+	assert(bin != NULL || len == 0);
 
 	for (i = 0; i < len; i++) {
 		out[2 * i] = hexval[((bin[i] >> 4) & 0x0F)];
@@ -73,10 +77,14 @@ int fhash(int fd, char *hashbuf, int hashlen, const char *alg)
 	ssize_t len;
 	int alg_len;
 
+	assert(hashbuf != NULL);
+	assert(hashlen > 0);
+	assert(alg != NULL);
+
 	buf = malloc(BUFSZ);
 	c = EVP_MD_CTX_new();
 
-	if (NULL == buf || NULL == c)
+	if (buf == NULL || c == NULL)
 		die("Insufficient memory for hashing file");
 
 	a = EVP_get_digestbyname(alg);
@@ -89,8 +97,7 @@ int fhash(int fd, char *hashbuf, int hashlen, const char *alg)
 	/* The length of the algorithm's hash (as a hex string, including NUL). */
 	alg_len = EVP_MD_CTX_size(c);
 
-	if (alg_len < 0)
-		die("Hash length is negative: %d\n", alg_len);
+	assert(alg_len > 0);
 
 	if ((alg_len * 2) >= hashlen)
 		die("Hash exceeds buffer size: %d > %d\n", alg_len * 2 + 1, hashlen);
@@ -106,8 +113,7 @@ int fhash(int fd, char *hashbuf, int hashlen, const char *alg)
 	if (EVP_DigestFinal_ex(c, rawhash, (unsigned int *)&alg_len) == 0)
 		die("Failed to finalize digest\n");
 
-	if (alg_len < 0)
-		die("Final hash length is negative: %d\n", alg_len);
+	assert(alg_len > 0);
 
 	if ((alg_len * 2) >= hashlen)
 		die("Final hash length too large: %d > %d\n", alg_len * 2 + 1, hashlen);
@@ -129,8 +135,12 @@ int fhash(int fd, char *hashbuf, int hashlen, const char *alg)
  */
 int get_alg_size(const char *alg)
 {
-	EVP_MD const *a = EVP_get_digestbyname(alg);
+	EVP_MD const *a;
 	int len;
+
+	assert(alg != NULL);
+
+	a = EVP_get_digestbyname(alg);
 
 	if (a == NULL)
 		die("Failed to find hash algorithm \"%s\"\n", alg);

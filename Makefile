@@ -3,7 +3,7 @@ MKDIR  ?= mkdir
 
 PREFIX ?= /usr/local
 
-CFLAGS += -Wall -Wextra -Werror -O2 -D_GNU_SOURCE
+CFLAGS += -Wall -Wextra -Werror -O2 -D_GNU_SOURCE -DNDEBUG
 CFLAGS += $(EXTRA_CFLAGS)
 LDLIBS = -lcrypto
 
@@ -11,12 +11,15 @@ OBJECTS = cshatag.o hash.o utilities.o xa.o
 
 VERSION ?= $(shell git describe --dirty=+ 2>/dev/null || echo 0.1-nogit)
 
-.PHONY: all clean install
+.PHONY: all clean debug install
 
 # Secondary expansion allows using $@ and co in the dependencies
 .SECONDEXPANSION:
 
 all: cshatag
+
+debug: CFLAGS := $(filter-out -DNDEBUG, $(CFLAGS))
+debug: cshatag
 
 include $(wildcard *.d)
 

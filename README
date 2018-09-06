@@ -80,11 +80,11 @@ OPTIONS
 EXAMPLES
        Typically, cshatag will be called from find:
        # find / -xdev -type f -exec cshatag {} \; > cshatag.log
-       Errors like corrupt files will then be printed to stderr  or  grep  for
+       Errors  like  corrupt  files will then be printed to stderr or grep for
        "corrupt" in cshatag.log.
 
        To remove the extended attributes from all files:
-       #  find  /  -xdev  -type f -exec setfattr -x user.shatag.ts {} \; -exec
+       # find / -xdev -type f -exec setfattr -x  user.shatag.ts  {}  \;  -exec
        setfattr -x user.shatag.sha256 {} ;
 
 RETURN VALUE
@@ -96,7 +96,7 @@ RETURN VALUE
        5 File is corrupt
 
 COMPATIBILITY
-       cshatag writes the user.shatag.ts field with  full  integer  nanosecond
+       cshatag  writes  the  user.shatag.ts field with full integer nanosecond
        precision, while python uses a double for the whole mtime and loses the
        last few digits.
 
@@ -107,10 +107,10 @@ COPYRIGHT
        Copyright © 2012 Jakob Unterwurzacher.
        Copyright © 2018 Tim Schlueter.
 
-       License     GPLv2+:     GNU     GPL     version     2     or      later
+       License      GPLv2+:     GNU     GPL     version     2     or     later
        <https://www.gnu.org/licenses/licenses.html>.
 
-       This  is  free  software:  you  are free to change and redistribute it.
+       This is free software: you are free  to  change  and  redistribute  it.
        There is NO WARRANTY, to the extent permitted by law.
 
 SEE ALSO
