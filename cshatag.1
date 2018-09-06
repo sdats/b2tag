@@ -41,15 +41,6 @@ File statuses that appear on stdout are:
 cshatag aims to be format-compatible with shatag and uses the same extended
 attributes (see the COMPATIBILITY section).
 
-If no options are specified,
-.B cshatag
-will compute checksums for files that are missing them and update checksums
-for files which have been modified (as if both the
-.B --tag
-and
-.B --update
-arguments were given).
-
 .SH OPTIONS
 .TP
 .BR \-c ", " \-\^\-check
@@ -59,8 +50,7 @@ Check the hashes on all specified files.
 Output a usage message and exit.
 .TP
 .BR \-n ", " \-\^\-dry\-run
-Do not create or update any checksum attributes. Useful with
-.B --check.
+Do not modify any stored checksum attributes.
 .TP
 .BR \-q ", " \-\^\-quiet
 Only print errors including checksum failures. Can be specified multiple times
@@ -68,16 +58,10 @@ to print even fewer messages. This is the opposite of
 .B --verbose.
 .TP
 .BR \-t ", " \-\^\-tag
-Compute new checksums for files that don't have them. Do not update any
-existing checksums (unless
-.B --update
-is also specified).
+Compute new checksums for files that don't have them.
 .TP
 .BR \-u ", " \-\^\-update
-Update outdated checksums. Do not add checksums to files that don't have them
-(unless
-.B --tag
-is also specified).
+Update outdated checksums.
 .TP
 .BR \-v ", " \-\^\-verbose
 Print more verbose messages error and warnings messages. Can be specified

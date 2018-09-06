@@ -43,8 +43,8 @@
 /**
  * Checks if a file's stored hash and timestamp match the current values.
  *
+ * @param args  The options set by command-line arguments.
  * @param filename  The file to check.
- * @param args      The parameters governing the behavior of this function.
  *
  * @see args_t for more details.
  *
@@ -52,24 +52,25 @@
  * @retval >0 An recoverable error occurred.
  * @retval <0 A fatal error occurred.
  */
-static int check_file(const char *filename, args_t *args)
+static int check_file(args_t *args, const char *filename)
 {
-	int fd = open(filename, O_RDONLY);
-	if (fd < 0)
-		die("Error: could not open file \"%s\": %m\n", filename);
-
+	int fd;
+	struct stat st;
 	xa_t s = (xa_t){ .alg = HASHALG };
 	xa_t a = (xa_t){ .alg = HASHALG };
 	bool needsupdate = false;
 	bool havecorrupt = false;
-	struct stat st;
+
+	fd = open(filename, O_RDONLY);
+	if (fd < 0)
+		die("Error: could not open file \"%s\": %m\n", filename);
+
+	fstat(fd, &st);
+	a.mtime = st.st_mtim;
 
 	xa_read(fd, &s);
 	if (strlen(s.hash) != (size_t)get_alg_size(s.alg) * 2)
 		die("Stored hash size mismatch: Expected %d, got %zu.\n", get_alg_size(s.alg), strlen(s.hash));
-
-	fstat(fd, &st);
-	a.mtime = st.st_mtim;
 
 	if (!args->check) {
 		/* Quick check. If stored timestamps match, skip hashing. */
@@ -85,7 +86,7 @@ static int check_file(const char *filename, args_t *args)
 	}
 
 	/* Skip existing files. */
-	if (args->tag && !args->update && (s.mtime.tv_sec != 0 || s.mtime.tv_nsec != 0)) {
+	if (!args->update && (s.mtime.tv_sec != 0 || s.mtime.tv_nsec != 0)) {
 		if (args->verbose >= 1) {
 			printf("<skip> %s\n", filename);
 			if (args->verbose >= 2)
@@ -96,7 +97,7 @@ static int check_file(const char *filename, args_t *args)
 	}
 
 	/* Skip new files. */
-	if (args->update && !args->tag && s.mtime.tv_sec == 0 && s.mtime.tv_nsec == 0) {
+	if (!args->tag && s.mtime.tv_sec == 0 && s.mtime.tv_nsec == 0) {
 		if (args->verbose >= 1) {
 			printf("<skip> %s\n", filename);
 			if (args->verbose >= 2)
@@ -150,18 +151,12 @@ static int check_file(const char *filename, args_t *args)
 			printf(" actual: %s\n", xa_format(&a));
 	}
 
-	if (args->dry_run)
-		needsupdate = false;
-
-	if (needsupdate && xa_write(fd, &a) != 0)
+	if (needsupdate && !args->dry_run && xa_write(fd, &a) != 0)
 		die("Error: could not write extended attributes to file \"%s\": %m\n", filename);
 
 	close(fd);
 
-	if (havecorrupt)
-		return 5;
-	else
-		return 0;
+	return (havecorrupt) ? 5 : 0;
 }
 
 /**
@@ -182,11 +177,10 @@ static void usage(const char *program)
 		"Optional arguments:\n"
 		"  -c, --check           check the hashes on all specified files.\n"
 		"  -h, --help            show this help message and exit\n"
-		"  -n, --dry-run         do not create or update any checksums\n"
+		"  -n, --dry-run         do not modify any stored checksums\n"
 		"  -q, --quiet           only print errors (including checksum failures)\n"
 		"  -t, --tag             compute new checksums for files that don't have them.\n"
-		"                        Do not update existing checksums\n"
-		"  -u, --update          update outdated checksums. Do not create new ones\n"
+		"  -u, --update          update outdated checksums.\n"
 		"  -v, --verbose         print all checksums (not just missing/changed)\n"
 		"  -V, --version         output version information and exit\n",
 		program);
@@ -270,7 +264,7 @@ int main(int argc, char *argv[])
 	}
 
 	while (argc >= 1) {
-		int err = check_file(argv[0], &args);
+		int err = check_file(&args, argv[0]);
 		if (err < 0)
 			return ret;
 		else if (ret == 0 && err > 0)

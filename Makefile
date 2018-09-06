@@ -36,6 +36,9 @@ endif
 utilities.o utilities.d: CFLAGS += -DVERSION_STRING='"$(VERSION)"'
 utilities.o utilities.d: .version
 
+README: cshatag.1
+	MANWIDTH=80 man -l $< > $@
+
 # Don't delete any created directories
 .PRECIOUS: $(PREFIX)/%/
 $(PREFIX)/%/:
