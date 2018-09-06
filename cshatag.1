@@ -73,6 +73,26 @@ Output version information about
 .B cshatag
 and exit.
 
+.TP
+.BR \-\^\-md5
+Use the MD5 hash algorithm (deprecated, not recommended).
+.TP
+.BR \-\^\-sha1
+Use the SHA1 hash algorithm (deprecated, not recommended).
+.TP
+.BR \-\^\-sha256
+Use the SHA256 hash algorithm (default, used by shatag).
+.TP
+.BR \-\^\-sha512
+Use the SHA512 hash algorithm (recommended on 64-bit systems which don't
+require shatag compatibility).
+.TP
+.BR \-\^\-blake2s256
+Use the Blake2s hash algorithm.
+.TP
+.BR \-\^\-blake2b512
+Use the Blake2b hash algorithm.
+
 .SH EXAMPLES
 
 Typically, cshatag will be called from find:

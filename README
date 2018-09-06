@@ -60,6 +60,23 @@ OPTIONS
        -V, --version
               Output version information about cshatag and exit.
 
+       --md5  Use the MD5 hash algorithm (deprecated, not recommended).
+
+       --sha1 Use the SHA1 hash algorithm (deprecated, not recommended).
+
+       --sha256
+              Use the SHA256 hash algorithm (default, used by shatag).
+
+       --sha512
+              Use the SHA512 hash algorithm  (recommended  on  64-bit  systems
+              which don't require shatag compatibility).
+
+       --blake2s256
+              Use the Blake2s hash algorithm.
+
+       --blake2b512
+              Use the Blake2b hash algorithm.
+
 EXAMPLES
        Typically, cshatag will be called from find:
        # find / -xdev -type f -exec cshatag {} \; > cshatag.log

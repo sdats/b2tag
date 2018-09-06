@@ -36,30 +36,33 @@
 #include "utilities.h"
 #include "xa.h"
 
+
 /** The hash algorithm to use. */
-#define HASHALG "sha256"
+#define DEFAULT_HASHALG "sha256"
+
+/** The options set by command-line arguments. */
+struct args_s args = (struct args_s){ 0 };
 
 
 /**
  * Checks if a file's stored hash and timestamp match the current values.
  *
- * @param args  The options set by command-line arguments.
  * @param filename  The file to check.
- *
- * @see args_t for more details.
  *
  * @retval 0  The file was processed successfully.
  * @retval >0 An recoverable error occurred.
  * @retval <0 A fatal error occurred.
  */
-static int check_file(args_t *args, const char *filename)
+static int check_file(const char *filename)
 {
 	int fd;
 	struct stat st;
-	xa_t s = (xa_t){ .alg = HASHALG };
-	xa_t a = (xa_t){ .alg = HASHALG };
+	xa_t a;
+	xa_t s;
 	bool needsupdate = false;
 	bool havecorrupt = false;
+
+	a = s = (xa_t){ .alg = args.alg };
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0)
@@ -72,12 +75,12 @@ static int check_file(args_t *args, const char *filename)
 	if (strlen(s.hash) != (size_t)get_alg_size(s.alg) * 2)
 		die("Stored hash size mismatch: Expected %d, got %zu.\n", get_alg_size(s.alg), strlen(s.hash));
 
-	if (!args->check) {
+	if (!args.check) {
 		/* Quick check. If stored timestamps match, skip hashing. */
 		if (ts_compare(s.mtime, a.mtime) == 0) {
-			if (args->verbose >= 1) {
+			if (args.verbose >= 1) {
 				printf("<ok> %s\n", filename);
-				if (args->verbose >= 2)
+				if (args.verbose >= 2)
 					printf(" stored: %s\n", xa_format(&s));
 			}
 
@@ -86,10 +89,10 @@ static int check_file(args_t *args, const char *filename)
 	}
 
 	/* Skip existing files. */
-	if (!args->update && (s.mtime.tv_sec != 0 || s.mtime.tv_nsec != 0)) {
-		if (args->verbose >= 1) {
+	if (!args.update && (s.mtime.tv_sec != 0 || s.mtime.tv_nsec != 0)) {
+		if (args.verbose >= 1) {
 			printf("<skip> %s\n", filename);
-			if (args->verbose >= 2)
+			if (args.verbose >= 2)
 				printf(" stored: %s\n", xa_format(&s));
 		}
 
@@ -97,10 +100,10 @@ static int check_file(args_t *args, const char *filename)
 	}
 
 	/* Skip new files. */
-	if (!args->tag && s.mtime.tv_sec == 0 && s.mtime.tv_nsec == 0) {
-		if (args->verbose >= 1) {
+	if (!args.tag && s.mtime.tv_sec == 0 && s.mtime.tv_nsec == 0) {
+		if (args.verbose >= 1) {
 			printf("<skip> %s\n", filename);
-			if (args->verbose >= 2)
+			if (args.verbose >= 2)
 				printf(" stored: %s\n", xa_format(&s));
 		}
 
@@ -122,16 +125,16 @@ static int check_file(args_t *args, const char *filename)
 			 * and reset the mtime to the last value (to hide the modification?)
 			 */
 			fprintf(stderr, "Error: corrupt file \"%s\"\n", filename);
-			if (args->verbose >= -1) {
+			if (args.verbose >= -1) {
 				printf("<corrupt> %s\n", filename);
-				if (args->verbose >= 2) {
+				if (args.verbose >= 2) {
 					printf(" stored: %s\n", xa_format(&s));
 					printf(" actual: %s\n", xa_format(&a));
 				}
 			}
 			havecorrupt = true;
 		}
-		else if (args->verbose >= 0) {
+		else if (args.verbose >= 0) {
 			if (s.mtime.tv_sec == 0 && s.mtime.tv_nsec == 0)
 				printf("<new> %s\n", filename);
 			else if (ts_compare(s.mtime, a.mtime) < 0)
@@ -139,19 +142,19 @@ static int check_file(args_t *args, const char *filename)
 			else
 				printf("<backdated> %s\n", filename);
 
-			if (args->verbose >= 2) {
+			if (args.verbose >= 2) {
 				printf(" stored: %s\n", xa_format(&s));
 				printf(" actual: %s\n", xa_format(&a));
 			}
 		}
 	}
-	else if (args->verbose >= 1) {
+	else if (args.verbose >= 1) {
 		printf("<ok> %s\n", filename);
-		if (args->verbose >= 2)
+		if (args.verbose >= 2)
 			printf(" actual: %s\n", xa_format(&a));
 	}
 
-	if (needsupdate && !args->dry_run && xa_write(fd, &a) != 0)
+	if (needsupdate && !args.dry_run && xa_write(fd, &a) != 0)
 		die("Error: could not write extended attributes to file \"%s\": %m\n", filename);
 
 	close(fd);
@@ -182,7 +185,14 @@ static void usage(const char *program)
 		"  -t, --tag             compute new checksums for files that don't have them.\n"
 		"  -u, --update          update outdated checksums.\n"
 		"  -v, --verbose         print all checksums (not just missing/changed)\n"
-		"  -V, --version         output version information and exit\n",
+		"  -V, --version         output version information and exit\n"
+		"\n"
+		"Hash algorithms:\n"
+		"  --md5 (deprecated)    --sha1 (deprecated)\n"
+		"  --sha256 (default)    --sha512 (recommended on 64-bit)\n"
+		"  --blake2s256          --blake2b512\n"
+		"\n"
+		"Note: the original shatag python utility only supports sha256.\n",
 		program);
 }
 
@@ -190,14 +200,20 @@ static void usage(const char *program)
  * Long options to pass to getopt.
  */
 static const struct option long_opts[] = {
-	{ "check",     no_argument, 0, 'c' },
-	{ "help",      no_argument, 0, 'h' },
-	{ "dry-run",   no_argument, 0, 'n' },
-	{ "quiet",     no_argument, 0, 'q' },
-	{ "tag",       no_argument, 0, 't' },
-	{ "update",    no_argument, 0, 'u' },
-	{ "verbose",   no_argument, 0, 'v' },
-	{ "version",   no_argument, 0, 'V' },
+	{ "check",      no_argument, 0, 'c' },
+	{ "help",       no_argument, 0, 'h' },
+	{ "dry-run",    no_argument, 0, 'n' },
+	{ "quiet",      no_argument, 0, 'q' },
+	{ "tag",        no_argument, 0, 't' },
+	{ "update",     no_argument, 0, 'u' },
+	{ "verbose",    no_argument, 0, 'v' },
+	{ "version",    no_argument, 0, 'V' },
+	{ "md5",        no_argument, 0,  0  },
+	{ "sha1",       no_argument, 0,  0  },
+	{ "sha256",     no_argument, 0,  0  },
+	{ "sha512",     no_argument, 0,  0  },
+	{ "blake2s256", no_argument, 0,  0  },
+	{ "blake2b512", no_argument, 0,  0  },
 	{ NULL, 0, 0, 0 }
 };
 
@@ -214,11 +230,16 @@ int main(int argc, char *argv[])
 {
 	int ret = 0;
 	char *program = basename(argv[0]);
-	args_t args = (args_t){ 0 };
 	int opt;
+	int option_index = 0;
 
-	while ((opt = getopt_long(argc, argv, "chnqtuvV", long_opts, NULL)) != -1) {
+	args.alg = DEFAULT_HASHALG;
+
+	while ((opt = getopt_long(argc, argv, "chnqtuvV", long_opts, &option_index)) != -1) {
 		switch (opt) {
+		case 0:
+			args.alg = long_opts[option_index].name;
+			break;
 		case 'c':
 			args.check = true;
 			break;
@@ -264,7 +285,7 @@ int main(int argc, char *argv[])
 	}
 
 	while (argc >= 1) {
-		int err = check_file(&args, argv[0]);
+		int err = check_file(argv[0]);
 		if (err < 0)
 			return ret;
 		else if (ret == 0 && err > 0)

@@ -27,7 +27,9 @@
 /**
  * The options passed to the program on the command-line.
  */
-typedef struct args_s {
+struct args_s {
+	/** Which hash algorithm to use. */
+	const char *alg;
 	/** The verbosity level (how many messages to print). */
 	int verbose;
 	/** Whether to check the hashes on up-to-date files. */
@@ -38,6 +40,9 @@ typedef struct args_s {
 	bool tag;
 	/** Only compute the checksums of outdated files. */
 	bool update;
-} args_t;
+};
+
+/** The options set by command-line arguments. */
+extern struct args_s args;
 
 #endif /* CSHATAG_H */
