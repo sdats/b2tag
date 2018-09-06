@@ -22,7 +22,10 @@
 #ifndef UTILITIES_H
 #define UTILITIES_H
 
+#include <stdio.h>
 #include <time.h>
+
+#include "cshatag.h"
 
 /**
  * Compare two timespec structures.
@@ -48,5 +51,25 @@ void die(const char *fmt, ...) __attribute__((noreturn, format(printf, 1, 2)));
  * Prints version information for cshatag.
  */
 void version(void);
+
+#define _check_level(level) (args.verbose >= (level))
+
+#define check_crit()  _check_level(-1)
+#define check_err()   _check_level(0)
+#define check_warn()  _check_level(1)
+#define check_info()  _check_level(2)
+#define check_debug() _check_level(3)
+
+#define _print(level, ...) \
+	do { \
+		if (check_##level()) \
+			fprintf(stderr, __VA_ARGS__); \
+	} while (0)
+
+#define pr_crit(...)  _print(crit,  __VA_ARGS__)
+#define pr_err(...)   _print(err,   __VA_ARGS__)
+#define pr_warn(...)  _print(warn,  __VA_ARGS__)
+#define pr_info(...)  _print(info,  __VA_ARGS__)
+#define pr_debug(...) _print(debug, __VA_ARGS__)
 
 #endif /* UTILITIES_H */

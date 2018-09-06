@@ -21,9 +21,13 @@ all: cshatag
 debug: CFLAGS := $(filter-out -DNDEBUG, $(CFLAGS))
 debug: cshatag
 
-include $(wildcard *.d)
-
 cshatag: $(OBJECTS) | $(OBJECTS:.o=.d)
+
+MAKECMDGOALS ?= all
+
+ifneq ($(filter %.o %.d all cshatag debug install,$(MAKECMDGOALS)),)
+include $(wildcard *.d)
+endif
 
 %.o %.d: %.c
 	$(CC) -MMD $(CFLAGS) -c -o $(@:.d=.o) $<

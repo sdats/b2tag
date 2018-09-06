@@ -24,6 +24,7 @@
 #define XA_H
 
 #include <assert.h>
+#include <stdbool.h>
 #include <sys/stat.h>
 
 #include "hash.h"
@@ -40,6 +41,17 @@ typedef struct xa_s
 	/** The file data's hash value as an ASCII hex string. */
 	char hash[MAX_HASH_SIZE * 2 + 1];
 } xa_t;
+
+/**
+ * Clear the timestamp and hash values in @p xa.
+ *
+ * @li @p xa->alg will be left untouched.
+ * @li @p xa->mtime will be zeroed.
+ * @li @p xa->hash will be set to a string of ASCII '0's the same length as @p xa->alg.
+ *
+ * @param xa  The extended attribute structure to clear.
+ */
+void xa_clear(xa_t *xa);
 
 /**
  * Hash the contents of @p fd and store the result in @p xa.

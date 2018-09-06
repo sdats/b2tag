@@ -34,11 +34,11 @@ struct args_s {
 	int verbose;
 	/** Whether to check the hashes on up-to-date files. */
 	bool check;
-	/** Don't change any extended attributes. */
-	bool dry_run;
-	/** Only compute the checksums of new files. */
+	/** Whether to update the hashes on backdated, corrupt, or invalid files. */
+	bool force;
+	/** Compute checksums for new or updated files. */
 	bool tag;
-	/** Only compute the checksums of outdated files. */
+	/** Only update the checksums of updated files. */
 	bool update;
 };
 

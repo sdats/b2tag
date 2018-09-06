@@ -12,21 +12,20 @@ DESCRIPTION
        Augier )
 
        cshatag is a tool to detect silent data corruption. It writes the mtime
-       and  the sha256 checksum of a file into the file's extended attributes.
-       The filesystem needs to be mounted with user_xattr enabled for this  to
+       and  the  checksum  of  a file into the file's extended attributes. The
+       filesystem needs to be mounted with  user_xattr  enabled  for  this  to
        work.  When  run  again,  it  compares stored mtime and checksum. If it
        finds that the mtime is unchanged but  the  checksum  has  changed,  it
-       warns  on  stderr.   In  any case, the status of the file is printed to
-       stdout and the stored checksum is updated.
+       warns on stderr.
 
-       File statuses that appear on stdout are:
-            backdated   file has been updated, mtime is older
-            corrupt     mtime has not changed, checksum is wrong
-            new         sha tag has not been set
+       File statuses are:
+            backdated   mtime is older than the sha tag, the checksum is wrong
+            corrupt     mtime matches the sha tag, the checksum is wrong
+            invalid     sha tag attributes are corrupt
+            new         sha tag attributes have not been set
             ok          checksum is correct
-            outdated    file has been updated, mtime is newer
-            skip        file was not checked  because  of  command-line  argu‐
-       ments. E.g.  --update
+            outdated    mtime is newer than the sha tag, the checksum is wrong
+            skip        file was not checked. E.g. because of --update
 
        cshatag  aims  to  be  format-compatible  with shatag and uses the same
        extended attributes (see the COMPATIBILITY section).
@@ -35,22 +34,24 @@ OPTIONS
        -c, --check
               Check the hashes on all specified files.
 
+       -f, --force
+              Update the stored hashes for backdated,  corrupted,  or  invalid
+              files.
+
        -h, --help
               Output a usage message and exit.
 
-       -n, --dry-run
-              Do not modify any stored checksum attributes.
-
        -q, --quiet
-              Only print errors including checksum failures. Can be  specified
-              multiple  times  to print even fewer messages. This is the oppo‐
+              Only  print errors including checksum failures. Can be specified
+              multiple times to print even fewer messages. This is  the  oppo‐
               site of --verbose.
 
        -t, --tag
-              Compute new checksums for files that don't have them.
+              Compute  new checksums for files that don't have them and update
+              any outdated checksums.
 
        -u, --update
-              Update outdated checksums.
+              Update outdated checksums only (ignore new files).
 
        -v, --verbose
               Print more verbose messages error and warnings messages. Can  be

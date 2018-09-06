@@ -33,26 +33,35 @@
 /**
  * Converts a raw array into a hex string.
  *
- * @param out  The buffer to store the hex string in.
- * @param bin  The input raw data array.
- * @param len  The length of @p bin.
+ * @param out     The buffer to store the hex string in.
+ * @param outlen  The length of @p out.
+ * @param bin     The input raw data array.
+ * @param len     The length of @p bin.
  *
  * @note @p out must be at least (@p len * 2) + 1 in length.
  */
-static void bin2hex(char *out, unsigned char *bin, int len)
+static int bin2hex(char *out, int outlen, unsigned char *bin, int len)
 {
 	char hexval[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 	int i;
 
 	assert(out != NULL);
+	assert(len >= 0);
 	assert(bin != NULL || len == 0);
 
-	for (i = 0; i < len; i++) {
-		out[2 * i] = hexval[((bin[i] >> 4) & 0x0F)];
-		out[2 * i + 1] = hexval[(bin[i]) & 0x0F];
+	if (outlen <= (len * 2)) {
+		pr_err("Hash buffer is too small: %d < %d\n", outlen, len * 2 + 1);
+		return -1;
 	}
 
-	out[2 * len] = 0;
+	for (i = 0; i < len; i++) {
+		out[2 * i]     = hexval[(bin[i] >> 4) & 0x0F];
+		out[2 * i + 1] = hexval[bin[i]        & 0x0F];
+	}
+
+	out[2 * len] = '\0';
+
+	return 0;
 }
 
 /**
@@ -70,6 +79,7 @@ static void bin2hex(char *out, unsigned char *bin, int len)
  */
 int fhash(int fd, char *hashbuf, int hashlen, const char *alg)
 {
+	int err = -1;
 	EVP_MD_CTX *c;
 	EVP_MD const *a;
 	char *buf;
@@ -84,46 +94,61 @@ int fhash(int fd, char *hashbuf, int hashlen, const char *alg)
 	buf = malloc(BUFSZ);
 	c = EVP_MD_CTX_new();
 
-	if (buf == NULL || c == NULL)
-		die("Insufficient memory for hashing file");
+	if (buf == NULL || c == NULL) {
+		pr_err("Insufficient memory for hashing file");
+		goto out;
+	}
 
 	a = EVP_get_digestbyname(alg);
-	if (NULL == a)
-		die("Failed to find hash algorithm %s\n", alg);
+	if (NULL == a) {
+		pr_err("Failed to find hash algorithm %s\n", alg);
+		goto out;
+	}
 
-	if (EVP_DigestInit_ex(c, a, NULL) == 0)
-		die("Failed to initialize digest\n");
+	if (EVP_DigestInit_ex(c, a, NULL) == 0) {
+		pr_err("Failed to initialize digest\n");
+		goto out;
+	}
 
 	/* The length of the algorithm's hash (as a hex string, including NUL). */
 	alg_len = EVP_MD_CTX_size(c);
 
 	assert(alg_len > 0);
 
-	if ((alg_len * 2) >= hashlen)
-		die("Hash exceeds buffer size: %d > %d\n", alg_len * 2 + 1, hashlen);
-
-	while ((len = read(fd, buf, BUFSZ)) > 0) {
-		if (EVP_DigestUpdate(c, buf, (size_t)len) == 0)
-			die("Failed to update digest\n");
+	if ((alg_len * 2) >= hashlen) {
+		pr_err("Hash exceeds buffer size: %d > %d\n", alg_len * 2 + 1, hashlen);
+		goto out;
 	}
 
-	if (len < 0)
-		die("Error reading file: %m\n");
+	while ((len = read(fd, buf, BUFSZ)) > 0) {
+		if (EVP_DigestUpdate(c, buf, (size_t)len) == 0) {
+			pr_err("Failed to update digest\n");
+			goto out;
+		}
+	}
 
-	if (EVP_DigestFinal_ex(c, rawhash, (unsigned int *)&alg_len) == 0)
-		die("Failed to finalize digest\n");
+	if (len < 0) {
+		pr_err("Error reading file: %m\n");
+		goto out;
+	}
+
+	if (EVP_DigestFinal_ex(c, rawhash, (unsigned int *)&alg_len) == 0) {
+		pr_err("Failed to finalize digest\n");
+		goto out;
+	}
 
 	assert(alg_len > 0);
 
-	if ((alg_len * 2) >= hashlen)
-		die("Final hash length too large: %d > %d\n", alg_len * 2 + 1, hashlen);
+	if (bin2hex(hashbuf, hashlen, rawhash, alg_len) != 0)
+		goto out;
 
-	bin2hex(hashbuf, rawhash, alg_len);
+	err = 0;
 
+out:
 	EVP_MD_CTX_free(c);
 	free(buf);
 
-	return 0;
+	return err;
 }
 
 /**
@@ -132,6 +157,7 @@ int fhash(int fd, char *hashbuf, int hashlen, const char *alg)
  * @param alg  The algorithm to use.
  *
  * @returns Returns the hash size of the @p alg hash algorithm.
+ * @returns Returns a negative number if an error occurs.
  */
 int get_alg_size(const char *alg)
 {
@@ -142,15 +168,17 @@ int get_alg_size(const char *alg)
 
 	a = EVP_get_digestbyname(alg);
 
-	if (a == NULL)
-		die("Failed to find hash algorithm \"%s\"\n", alg);
+	if (a == NULL) {
+		pr_err("Failed to find hash algorithm \"%s\"\n", alg);
+		return -1;
+	}
 
 	len = EVP_MD_size(a);
-	if (len > EVP_MAX_MD_SIZE)
-		die("Algorithm \"%s\" is too large: %d > %d\n", alg, len, EVP_MAX_MD_SIZE);
+
+	assert(len <= EVP_MAX_MD_SIZE);
 
 	if (len < 0)
-		die("Algorithm \"%s\" is too small: %d\n", alg, len);
+		pr_err("Invalid algorithm size for \"%s\": %d\n", alg, len);
 
 	return len;
 }

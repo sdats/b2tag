@@ -22,6 +22,7 @@
 
 #include "xa.h"
 
+#include <ctype.h>
 #include <errno.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -38,9 +39,10 @@
  *
  * @param xa  The extended attribute structure to clear.
  */
-static void xa_clear(xa_t *xa)
+void xa_clear(xa_t *xa)
 {
 	assert(xa != NULL);
+
 	memset(&xa->mtime, 0, sizeof(xa->mtime));
 	snprintf(xa->hash, sizeof(xa->hash), "%0*d", get_alg_size(xa->alg) * 2, 0);
 }
@@ -51,8 +53,9 @@ static void xa_clear(xa_t *xa)
  * @param fd  The file to retrieve the extended attributes from.
  * @param xa  The extended attribute structure to store the values in.
  *
- * @retval 0  The extended attributes were successfully read.
- * @retval !0 An error occurred reading the extended attributes.
+ * @retval -1  An error occurred reading the extended attributes.
+ * @retval  0  The extended attributes were successfully read.
+ * @retval  1  The file does not have the shatag extended attributes.
  */
 int xa_read(int fd, xa_t *xa)
 {
@@ -67,24 +70,16 @@ int xa_read(int fd, xa_t *xa)
 
 	assert(fd >= 0);
 
-	snprintf(buf, sizeof(buf), "user.shatag.%s", xa->alg);
-	len = fgetxattr(fd, buf, xa->hash, sizeof(xa->hash) - 1);
-	if (len < 0)
-		return -1;
-
-	xa->hash[len] = '\0';
-
+	/* Read timestamp xattr. */
 	len = fgetxattr(fd, "user.shatag.ts", buf, sizeof(buf) - 1);
-	if (len < 0) {
-		xa_clear(xa);
-		return -1;
-	}
+	if (len < 0)
+		return (errno == ENODATA) ? 1 : -1;
 
 	buf[len] = '\0';
 
 	err = sscanf(buf, "%lu.%n%10lu%n", &xa->mtime.tv_sec, &start, &xa->mtime.tv_nsec, &end);
 	if (err < 1) {
-		fprintf(stderr, "Malformed timestamp: %m\n");
+		pr_warn("Malformed timestamp: %m\n");
 		xa_clear(xa);
 		return -1;
 	}
@@ -94,9 +89,45 @@ int xa_read(int fd, xa_t *xa)
 		xa->mtime.tv_nsec *= 10;
 
 	if (xa->mtime.tv_nsec >= 1000000000) {
-		fprintf(stderr, "Invalid timestamp (ns too large): %s\n", buf);
+		pr_warn("Invalid timestamp (ns too large): %s\n", buf);
 		xa_clear(xa);
 		return -1;
+	}
+
+	/* Read hash xattr. */
+	snprintf(buf, sizeof(buf), "user.shatag.%s", xa->alg);
+	len = fgetxattr(fd, buf, xa->hash, sizeof(xa->hash) - 1);
+	if (len < 0) {
+		xa_clear(xa);
+		return (errno == ENODATA) ? 1 : -1;
+	}
+
+	xa->hash[len] = '\0';
+
+	if (len != (ssize_t)get_alg_size(xa->alg) * 2) {
+		pr_warn("Stored hash size mismatch: %zd != %d\n", len, get_alg_size(xa->alg) * 2);
+		xa_clear(xa);
+		return -1;
+	}
+
+	/* Make sure the hash is all lowercase hex chars. */
+	for (start = 0; (ssize_t)start < len; start++) {
+		char c = xa->hash[start];
+
+		if (!isxdigit(c)) {
+			pr_warn("Malformed hash.\n");
+			if (isprint(c))
+				pr_debug("Found '%c' (0x%02x).\n", c, (unsigned)c);
+			else
+				pr_debug("Found 0x%02x character.\n", (unsigned)c);
+
+			xa_clear(xa);
+			return -1;
+		}
+
+		/* Convert to lowercase if necessary. */
+		if (isupper(c))
+			xa->hash[start] = tolower(c);
 	}
 
 	return 0;
@@ -118,18 +149,20 @@ int xa_write(int fd, xa_t *xa)
 
 	assert(fd >= 0);
 	assert(xa != NULL);
+	assert(xa->alg != NULL);
 
 	snprintf(buf, sizeof(buf), "user.shatag.%s", xa->alg);
 	err = fsetxattr(fd, buf, &xa->hash, strlen(xa->hash), 0);
 	if (err != 0) {
-		fprintf(stderr, "Failed to set `%s' xattr: %m\n", buf);
+		pr_err("Failed to set `%s' xattr: %m\n", buf);
 		return err;
 	}
 
 	snprintf(buf, sizeof(buf), "%lu.%09lu", xa->mtime.tv_sec, xa->mtime.tv_nsec);
 	err = fsetxattr(fd, "user.shatag.ts", buf, strlen(buf), 0);
 	if (err != 0)
-		fprintf(stderr, "Failed to set `%s' xattr: %m\n", "user.shatag.ts");
+		pr_err("Failed to set `%s' xattr: %m\n", "user.shatag.ts");
+
 	return err;
 }
 
