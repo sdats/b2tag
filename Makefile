@@ -11,7 +11,7 @@ OBJECTS = cshatag.o hash.o utilities.o xa.o
 
 VERSION ?= $(shell git describe --dirty=+ 2>/dev/null || echo 0.1-nogit)
 
-.PHONY: all clean debug install
+.PHONY: all clean debug install test
 
 # Secondary expansion allows using $@ and co in the dependencies
 .SECONDEXPANSION:
@@ -45,6 +45,9 @@ utilities.o utilities.d: .version
 
 README: cshatag.1
 	MANWIDTH=80 man -l $< > $@
+
+test: cshatag
+	./test.sh
 
 # Don't delete any created directories
 .PRECIOUS: $(PREFIX)/%/
