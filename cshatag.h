@@ -30,16 +30,14 @@
 struct args_s {
 	/** Which hash algorithm to use. */
 	const char *alg;
-	/** The verbosity level (how many messages to print). */
-	int verbose;
 	/** Whether to check the hashes on up-to-date files. */
 	bool check;
+	/** Don't change any extended attributes. */
+	bool dry_run;
 	/** Whether to update the hashes on backdated, corrupt, or invalid files. */
 	bool force;
-	/** Compute checksums for new or updated files. */
-	bool tag;
-	/** Only update the checksums of updated files. */
-	bool update;
+	/** The verbosity level (how many messages to print). */
+	int verbose;
 };
 
 /** The options set by command-line arguments. */

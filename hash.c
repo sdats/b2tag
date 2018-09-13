@@ -87,6 +87,7 @@ int fhash(int fd, char *hashbuf, int hashlen, const char *alg)
 	ssize_t len;
 	int alg_len;
 
+	assert(fd >= 0);
 	assert(hashbuf != NULL);
 	assert(hashlen > 0);
 	assert(alg != NULL);

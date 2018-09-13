@@ -45,23 +45,25 @@
 struct args_s args = (struct args_s){ 0 };
 
 static char const * const file_state_str[] = {
+	"FAULT",
 	"OK",
+	"OK",
+	"NEW",
+	"OUTDATED",
 	"BACKDATED",
 	"CORRUPT",
 	"INVALID",
-	"NEW",
-	"OUTDATED",
-	"SKIPPED"
 };
 
 enum file_state {
-	FILE_OK,
-	FILE_BACKDATED,
-	FILE_CORRUPT,
-	FILE_INVALID,
-	FILE_NEW,
-	FILE_OUTDATED,
-	FILE_SKIPPED
+	FILE_FAULT,     /**< An error occurred reading file. */
+	FILE_OK,        /**< File hash and mtime matches. */
+	FILE_SAME,      /**< File hash matches, mtime doesn't. */
+	FILE_NEW,       /**< File doesn't have stored hash or mtime. */
+	FILE_OUTDATED,  /**< File hash differs, mtime is newer. */
+	FILE_BACKDATED, /**< File hash differs, mtime is older. */
+	FILE_CORRUPT,   /**< File hash differs, mtime matches. */
+	FILE_INVALID,   /**< Xattrs corrupted. */
 };
 
 /**
@@ -78,43 +80,103 @@ enum file_state {
  */
 void print_state(enum file_state state, const char *filename, xa_t *stored, xa_t *actual)
 {
-	bool print_status = check_err();
-	FILE *output = (args.check) ? stdout : stderr;
+	bool print_status;
 
 	switch (state) {
-	case FILE_OK:
-		if (!args.check)
-			print_status = check_warn();
-
-	case FILE_NEW:
-	case FILE_OUTDATED:
-	case FILE_SKIPPED:
-		if (!print_status)
-			break;
-
-		fprintf(output, "%s: %s\n", filename, file_state_str[state]);
-		break;
-
-	case FILE_INVALID:
 	case FILE_BACKDATED:
 	case FILE_CORRUPT:
-		if (!check_crit())
-			break;
-
-		fprintf(output, "%s: %s\n", filename, file_state_str[state]);
+	case FILE_FAULT:
+	case FILE_INVALID:
+		print_status = check_crit();
 		break;
 
 	default:
-		pr_err("Unknown file state: %d\n", (int)state);
-		return;
+		print_status = check_err();
+		break;
 	}
 
+	if (!print_status)
+		return;
+
+	printf("%s: %s\n", filename, file_state_str[state]);
+
 	if (check_info()) {
-		if (stored != NULL)
-			fprintf(output, "# stored: %s\n", xa_format(stored));
-		if (actual != NULL)
-			fprintf(output, "# actual: %s\n", xa_format(actual));
+		if (stored != NULL && stored->valid)
+			printf("# stored: %s\n", xa_format(stored));
+		if (actual != NULL && actual->valid)
+			printf("# actual: %s\n", xa_format(actual));
 	}
+}
+
+/**
+ * Checks if a file's stored hash and timestamp match the current values.
+ *
+ * @note @p stored and @p actual may be filled with data depending on the
+ *       file's state (but may not be so check the xa_t::valid field).
+ *       Also, @p actual->mtime will not be changed if non-zero.
+ *
+ * @param[in]  fd         The file to get the state of.
+ * @param[out] stored     The xa structure to hold the file's stored attributes.
+ * @param[in,out] actual  The xa structure to hold the file's current hash+mtime.
+ *
+ * @returns Returns the file's state.
+ *
+ * @see file_state
+ */
+static enum file_state get_file_state(int fd, xa_t *stored, xa_t *actual)
+{
+	int err;
+	int comparison;
+
+	assert(fd >= 0);
+	assert(stored != NULL);
+	assert(actual != NULL);
+	assert((void *)stored->alg == (void *)actual->alg);
+
+	/* Skip the fstat call if mtime seconds is already set. */
+	if (actual->mtime.tv_sec == 0) {
+		struct stat st;
+
+		err = fstat(fd, &st);
+		if (err != 0)
+			return FILE_FAULT;
+
+		actual->mtime = st.st_mtim;
+	}
+
+	err = xa_read(fd, stored);
+	if (err < 0) {
+		xa_compute(fd, actual);
+		return FILE_INVALID;
+	}
+
+	if (err > 0) {
+		xa_compute(fd, actual);
+		return FILE_NEW;
+	}
+
+	comparison = ts_compare(stored->mtime, actual->mtime);
+
+	/* Quick check. If stored timestamps match, skip hashing. */
+	if (comparison == 0 && !args.check)
+		return FILE_OK;
+
+	xa_compute(fd, actual);
+
+	/* hash and mtime matches -> ok, hash matches and mtime differs -> same */
+	if (strcmp(stored->hash, actual->hash) == 0)
+		return (comparison == 0) ? FILE_OK : FILE_SAME;
+
+	/* file mtime is newer than the xattr mtime. */
+	if (comparison < 0)
+		return FILE_OUTDATED;
+
+	/* file mtime is older than the xattr mtime. */
+	if (comparison > 0)
+		return FILE_BACKDATED;
+
+	/* Same timestamp, different hashes. */
+	return FILE_CORRUPT;
 }
 
 /**
@@ -128,14 +190,13 @@ void print_state(enum file_state state, const char *filename, xa_t *stored, xa_t
  */
 static int check_file(const char *filename)
 {
+	enum file_state state;
 	int ret = 0;
 	int err;
 	int fd;
 	struct stat st;
 	xa_t a;
 	xa_t s;
-	bool update_xattrs = false;
-	bool has_xattrs = false;
 
 	assert(filename != NULL);
 
@@ -147,83 +208,58 @@ static int check_file(const char *filename)
 		return 1;
 	}
 
-	fstat(fd, &st);
+	err = fstat(fd, &st);
+	if (err != 0) {
+		pr_err("Error: could not stat file \"%s\": %m\n", filename);
+		ret = -1;
+		goto close_out;
+	}
+
+	if (!S_ISREG(st.st_mode)) {
+		pr_err("Error: \"%s\": not a regular file\n", filename);
+		ret = 1;
+		goto close_out;
+	}
+
 	a.mtime = st.st_mtim;
 
-	err = xa_read(fd, &s);
-	if (err == 0)
-		has_xattrs = true;
-	else if (err < 0) {
-		print_state(FILE_INVALID, filename, NULL, NULL);
-
-		if (args.update && args.force) {
-			xa_compute(fd, &a);
-
-			assert(strlen(a.hash) == (size_t)get_alg_size(a.alg) * 2);
-
-			if (xa_write(fd, &a) != 0) {
-				pr_err("Error: could not write extended attributes to file \"%s\": %m\n", filename);
-				return 2;
-			}
-		}
-
-		return 1;
+	state = get_file_state(fd, &s, &a);
+	if (state == FILE_FAULT) {
+		pr_err("Error: failed to get file state \"%s\": %m\n", filename);
+		ret = -1;
+		goto close_out;
 	}
 
-	if (has_xattrs)
-		err = ts_compare(s.mtime, a.mtime);
-	else
-		err = -1;
+	print_state(state, filename, &s, &a);
 
-	/* Quick check. If stored timestamps match, skip hashing. */
-	if (!args.check && err == 0) {
-		print_state(FILE_OK, filename, &s, NULL);
-		return 0;
+	if (state == FILE_OK)
+		goto close_out;
+
+	if (args.dry_run)
+		goto close_out;
+
+	/* Don't update the stored xattrs unless -f is specified for backdated,
+	 * corrupt, fault, or invalid files.
+	 */
+	if (!args.force) {
+		if (state == FILE_BACKDATED)
+			goto close_out;
+		if (state == FILE_CORRUPT)
+			goto close_out;
+		if (state == FILE_FAULT)
+			goto close_out;
+		if (state == FILE_INVALID)
+			goto close_out;
 	}
 
-	/* Skip new files. */
-	if (!args.tag && !has_xattrs) {
-		print_state(FILE_SKIPPED, filename, &s, NULL);
-		return 0;
-	}
-
-	xa_compute(fd, &a);
-
-	assert(strlen(a.hash) == (size_t)get_alg_size(a.alg) * 2);
-	assert((unsigned long)s.alg == (unsigned long)a.alg);
-
-	if (!has_xattrs) {
-		print_state(FILE_NEW, filename, NULL, &a);
-		update_xattrs = true;
-	}
-	else if (strcmp(s.hash, a.hash) == 0) {
-		print_state(FILE_OK, filename, NULL, &a);
-		update_xattrs = (err != 0); /* Update xattrs if timestamps differ. */
-	}
-	else {
-		update_xattrs = true;
-
-		if (err < 0)
-			print_state(FILE_OUTDATED, filename, &s, &a);
-		else {
-			enum file_state state = FILE_CORRUPT;
-
-			if (err > 0)
-				state = FILE_BACKDATED;
-
-			print_state(state, filename, &s, &a);
-			update_xattrs = args.force;
-			ret = 1;
-		}
-	}
-
-	if (args.update && update_xattrs && xa_write(fd, &a) != 0) {
+	err = xa_write(fd, &a);
+	if (err != 0) {
 		pr_err("Error: could not write extended attributes to file \"%s\": %m\n", filename);
 		ret = 2;
 	}
 
+close_out:
 	close(fd);
-
 	return ret;
 }
 
@@ -247,10 +283,8 @@ static void usage(const char *program)
 		"  -f, --force           update the stored hashes for backdated, corrupted, or\n"
 		"                        invalid files\n"
 		"  -h, --help            show this help message and exit\n"
+		"  -n, --dry-run         don't update any stored attributes\n"
 		"  -q, --quiet           only print errors (including checksum failures)\n"
-		"  -t, --tag             compute new checksums for files that don't have them\n"
-		"                        and update any outdated checksums\n"
-		"  -u, --update          update outdated checksums only (ignore new files)\n"
 		"  -v, --verbose         print all checksums (not just missing/changed)\n"
 		"  -V, --version         output version information and exit\n"
 		"\n"
@@ -268,11 +302,10 @@ static void usage(const char *program)
  */
 static const struct option long_opts[] = {
 	{ "check",      no_argument, 0, 'c' },
+	{ "dry-run",    no_argument, 0, 'n' },
 	{ "force",      no_argument, 0, 'f' },
 	{ "help",       no_argument, 0, 'h' },
 	{ "quiet",      no_argument, 0, 'q' },
-	{ "tag",        no_argument, 0, 't' },
-	{ "update",     no_argument, 0, 'u' },
 	{ "verbose",    no_argument, 0, 'v' },
 	{ "version",    no_argument, 0, 'V' },
 	{ "md5",        no_argument, 0,  0  },
@@ -302,7 +335,7 @@ int main(int argc, char *argv[])
 
 	args.alg = DEFAULT_HASHALG;
 
-	while ((opt = getopt_long(argc, argv, "cfhqtuvV", long_opts, &option_index)) != -1) {
+	while ((opt = getopt_long(argc, argv, "cfhnqvV", long_opts, &option_index)) != -1) {
 		switch (opt) {
 		case 0:
 			args.alg = long_opts[option_index].name;
@@ -316,15 +349,11 @@ int main(int argc, char *argv[])
 		case 'h':
 			usage(program);
 			return EXIT_SUCCESS;
+		case 'n':
+			args.dry_run = true;
+			break;
 		case 'q':
 			args.verbose--;
-			break;
-		case 't':
-			args.tag = true;
-			args.update = true;
-			break;
-		case 'u':
-			args.update = true;
 			break;
 		case 'v':
 			args.verbose++;
@@ -332,6 +361,7 @@ int main(int argc, char *argv[])
 		case 'V':
 			version();
 			return EXIT_SUCCESS;
+
 		default:
 			if (isprint(opt))
 				fprintf(stderr, "Unknown argument '-%c' (%#02x)\n", opt, opt);

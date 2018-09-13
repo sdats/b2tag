@@ -66,20 +66,8 @@ TAG_VAL=$(getfattr --only-values --name=user.shatag.sha256 "$TEST_FILE" 2>/dev/n
 [[ -z $TAG_VAL ]] \
 	|| fail "Shatag value already set."
 
-# Make sure cshatag doesn't add the xattrs without any arguments
+# Make sure cshatag adds the proper xattrs
 ./cshatag $args "$TEST_FILE" \
-	|| fail "cshatag returned failure: $?"
-
-TAG_TS=$(getfattr --only-values --name=user.shatag.ts "$TEST_FILE" 2>/dev/null)
-TAG_VAL=$(getfattr --only-values --name=user.shatag.sha256 "$TEST_FILE" 2>/dev/null)
-
-[[ -z $TAG_TS ]]  \
-	|| fail "Shatag timestamp already set."
-[[ -z $TAG_VAL ]] \
-	|| fail "Shatag value already set."
-
-# Make sure cshatag adds the proper xattrs with the -t option
-./cshatag $args -t "$TEST_FILE" \
 	|| fail "cshatag returned failure: $?"
 
 TAG_TS=$(getfattr --only-values --name=user.shatag.ts "$TEST_FILE") \
@@ -94,6 +82,7 @@ TAG_VAL=$(getfattr --only-values --name=user.shatag.sha256 "$TEST_FILE") \
 
 # If the test was successful, remove the test file
 if [[ $RET -eq 0 ]]; then
+	echo "All tests successful"
 	rm -f "$TEST_FILE"
 fi
 

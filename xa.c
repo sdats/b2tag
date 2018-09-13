@@ -25,7 +25,6 @@
 #include <ctype.h>
 #include <errno.h>
 #include <string.h>
-#include <sys/stat.h>
 #include <sys/xattr.h>
 
 #include "utilities.h"
@@ -43,8 +42,36 @@ void xa_clear(xa_t *xa)
 {
 	assert(xa != NULL);
 
+	xa->valid = false;
 	memset(&xa->mtime, 0, sizeof(xa->mtime));
 	snprintf(xa->hash, sizeof(xa->hash), "%0*d", get_alg_size(xa->alg) * 2, 0);
+}
+
+/**
+ * Hash the contents of @p fd and store the result in @p xa.
+ *
+ * Additionally, retrieve the last mtime of @p fd and store it in @p xa
+ * (unless @p xa already contains a non-zero mtime).
+ *
+ * @param fd  The file to compute the hash of.
+ * @param xa  The extended attribute structure to store the values in.
+ *
+ * @retval 0  The contents of @p fd were successfully hashed.
+ * @retval !0 An error occurred while hashing the contents of @p fd.
+ */
+int xa_compute(int fd, xa_t *xa)
+{
+	int err;
+
+	assert(xa != NULL);
+
+	err = fhash(fd, xa->hash, sizeof(xa->hash), xa->alg);
+	if (err == 0)
+		xa->valid = true;
+
+	assert(strlen(xa->hash) == (size_t)get_alg_size(xa->alg) * 2);
+
+	return err;
 }
 
 /**
@@ -130,6 +157,8 @@ int xa_read(int fd, xa_t *xa)
 			xa->hash[start] = tolower(c);
 	}
 
+	xa->valid = true;
+
 	return 0;
 }
 
@@ -150,6 +179,9 @@ int xa_write(int fd, xa_t *xa)
 	assert(fd >= 0);
 	assert(xa != NULL);
 	assert(xa->alg != NULL);
+
+	if (!xa->valid)
+		return -EINVAL;
 
 	snprintf(buf, sizeof(buf), "user.shatag.%s", xa->alg);
 	err = fsetxattr(fd, buf, &xa->hash, strlen(xa->hash), 0);
@@ -182,6 +214,9 @@ const char *xa_format(xa_t *xa)
 	static char buf[MAX_HASH_SIZE * 2 + 32];
 
 	assert(xa != NULL);
+
+	if (!xa->valid)
+		return "<empty>";
 
 	len = snprintf(buf, sizeof(buf), "%s %010lu.%09lu", xa->hash, xa->mtime.tv_sec, xa->mtime.tv_nsec);
 

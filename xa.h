@@ -34,6 +34,8 @@
  */
 typedef struct xa_s
 {
+	/** Whether the xattr struct contains a valid hash. */
+	bool valid;
 	/** The file's last modified time. */
 	struct timespec mtime;
 	/** The hash algorithm to use. */
@@ -65,12 +67,7 @@ void xa_clear(xa_t *xa);
  * @retval 0  The contents of @p fd were successfully hashed.
  * @retval !0 An error occurred while hashing the contents of @p fd.
  */
-static inline int xa_compute(int fd, xa_t *xa)
-{
-	assert(fd >= 0);
-	assert(xa != NULL);
-	return fhash(fd, xa->hash, sizeof(xa->hash), xa->alg);
-}
+int xa_compute(int fd, xa_t *xa);
 
 /**
  * Retrieve the stored extended attributes for @p fd and store it in @p xa.
