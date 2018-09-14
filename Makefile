@@ -6,8 +6,9 @@ PREFIX ?= /usr/local
 CFLAGS += -Wall -Wextra -Werror -O2 -D_GNU_SOURCE -DNDEBUG
 CFLAGS += $(EXTRA_CFLAGS)
 LDLIBS = -lcrypto
+LDLIBS += $(EXTRA_LDLIBS)
 
-OBJECTS = cshatag.o hash.o utilities.o xa.o
+OBJECTS = cshatag.o file.o hash.o utilities.o xa.o
 
 VERSION ?= $(shell git describe --dirty=+ 2>/dev/null || echo 0.1-nogit)
 
@@ -18,7 +19,7 @@ VERSION ?= $(shell git describe --dirty=+ 2>/dev/null || echo 0.1-nogit)
 
 all: cshatag
 
-debug: CFLAGS := $(filter-out -DNDEBUG, $(CFLAGS))
+debug: CFLAGS := -ggdb3 $(filter-out -DNDEBUG, $(CFLAGS))
 debug: cshatag
 
 cshatag: $(OBJECTS) | $(OBJECTS:.o=.d)

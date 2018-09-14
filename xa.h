@@ -23,9 +23,7 @@
 #ifndef XA_H
 #define XA_H
 
-#include <assert.h>
 #include <stdbool.h>
-#include <sys/stat.h>
 
 #include "hash.h"
 
