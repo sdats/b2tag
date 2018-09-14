@@ -111,7 +111,7 @@ static void print_state(enum file_state state, const char *filename, xa_t *store
 
 	printf("%s: %s\n", filename, file_state_str[state]);
 
-	if (check_info()) {
+	if (check_debug()) {
 		if (stored != NULL && stored->valid)
 			printf("# stored: %s\n", xa_format(stored));
 		if (actual != NULL && actual->valid)

@@ -107,7 +107,7 @@ int xa_read(int fd, xa_t *xa)
 
 	err = sscanf(buf, "%lu.%n%10lu%n", &xa->mtime.tv_sec, &start, &xa->mtime.tv_nsec, &end);
 	if (err < 1) {
-		pr_warn("Malformed timestamp: %m\n");
+		pr_err("Malformed timestamp: %m\n");
 		xa_clear(xa);
 		return -1;
 	}
@@ -117,7 +117,7 @@ int xa_read(int fd, xa_t *xa)
 		xa->mtime.tv_nsec *= 10;
 
 	if (xa->mtime.tv_nsec >= 1000000000) {
-		pr_warn("Invalid timestamp (ns too large): %s\n", buf);
+		pr_err("Invalid timestamp (ns too large): %s\n", buf);
 		xa_clear(xa);
 		return -1;
 	}
@@ -133,7 +133,7 @@ int xa_read(int fd, xa_t *xa)
 	xa->hash[len] = '\0';
 
 	if (len != (ssize_t)get_alg_size(xa->alg) * 2) {
-		pr_warn("Stored hash size mismatch: %zd != %d\n", len, get_alg_size(xa->alg) * 2);
+		pr_err("Stored hash size mismatch: %zd != %d\n", len, get_alg_size(xa->alg) * 2);
 		xa_clear(xa);
 		return -1;
 	}
@@ -143,7 +143,7 @@ int xa_read(int fd, xa_t *xa)
 		char c = xa->hash[start];
 
 		if (!isxdigit(c)) {
-			pr_warn("Malformed hash.\n");
+			pr_err("Malformed hash.\n");
 			if (isprint(c))
 				pr_debug("Found '%c' (0x%02x).\n", c, (unsigned)c);
 			else

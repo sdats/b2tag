@@ -57,8 +57,7 @@ void version(void);
 #define check_crit()  _check_level(-1)
 #define check_err()   _check_level(0)
 #define check_warn()  _check_level(1)
-#define check_info()  _check_level(2)
-#define check_debug() _check_level(3)
+#define check_debug() _check_level(2)
 
 #define _print(level, ...) \
 	do { \
@@ -69,7 +68,6 @@ void version(void);
 #define pr_crit(...)  _print(crit,  __VA_ARGS__)
 #define pr_err(...)   _print(err,   __VA_ARGS__)
 #define pr_warn(...)  _print(warn,  __VA_ARGS__)
-#define pr_info(...)  _print(info,  __VA_ARGS__)
 #define pr_debug(...) _print(debug, __VA_ARGS__)
 
 #endif /* UTILITIES_H */
