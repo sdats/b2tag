@@ -41,11 +41,17 @@
  */
 void xa_clear(xa_t *xa)
 {
+	/* Keep an empty static structure around so we only have to call snprintf once. */
+	static xa_t empty = (xa_t){ 0 };
+
 	assert(xa != NULL);
 
-	xa->valid = false;
-	memset(&xa->mtime, 0, sizeof(xa->mtime));
-	snprintf(xa->hash, sizeof(xa->hash), "%0*d", get_alg_size(xa->alg) * 2, 0);
+	if ((void *)empty.alg != (void *)xa->alg) {
+		empty.alg = xa->alg;
+		snprintf(empty.hash, sizeof(empty.hash), "%0*d", get_alg_size(empty.alg) * 2, 0);
+	}
+
+	*xa = empty;
 }
 
 /**
