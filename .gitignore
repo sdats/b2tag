@@ -2,8 +2,36 @@
 cshatag
 # Ignore the .version file
 .version
-# Test file
-test.txt
+# Object files
+*.o
+# Dependency files
+*.d
+# Code coverage files
+*.gcda
+*.gcno
 # Ignore doxygen directories
 html
 latex
+# Test file
+test.txt
+# IDE files/dirs
+.vscode
+*.sublime-workspace
+*.sublime-project
+[._]*.s[a-w][a-z]
+*~
+*-
+*.orig
+# Tags files
+TAGS
+tags
+.tags
+.tags_sorted_by_file
+# GNU global files
+GPATH
+GRTAGS
+GSYMS
+GTAGS
+# Cscope files
+cscope.*
+ncscope.*
