@@ -23,14 +23,19 @@
 #define FILE_H
 
 /**
- * Checks if a file's stored hash and timestamp match the current values.
+ * Figure out whether a file path is a file or directory and process it.
  *
- * @param filename  The file to check.
+ * If @p filename is a regular file, this will pass it to check_file().
+ *
+ * If @p filename is a directory and --recursive was set on the command-line,
+ * this will pass it on to check_dir().
+ *
+ * @param filename  The path to check.
  *
  * @retval 0  The file was processed successfully.
  * @retval >0 An recoverable error occurred.
  * @retval <0 A fatal error occurred.
  */
-int check_file(const char *filename);
+int process_path(const char *filename);
 
 #endif /* FILE_H */

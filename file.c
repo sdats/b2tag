@@ -22,6 +22,7 @@
 #include "file.h"
 
 #include <assert.h>
+#include <dirent.h>
 #include <fcntl.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -30,6 +31,25 @@
 #include "utilities.h"
 #include "xa.h"
 
+/**
+ * An array holding the inode and dev numbers for a directory.
+ */
+struct dir_no {
+	dev_t device; /**< The directory's device ID. */
+	ino_t inode;  /**< The directory's inode number. */
+};
+
+/**
+ * An array holding the device id and inodes of all parent directories.
+ * This is used to check for filesystem loops.
+ */
+struct parent_dirs {
+	struct dir_no *data; /**< An array of directories. */
+	size_t count;        /**< The current number of elements used in the array. */
+	size_t allocated;    /**< The number of elements allocated in the array. */
+};
+
+/** A file's current state (e.g. outdated). */
 enum file_state {
 	FILE_FAULT,     /**< An error occurred reading file. */
 	FILE_OK,        /**< File hash and mtime matches. */
@@ -41,16 +61,21 @@ enum file_state {
 	FILE_INVALID,   /**< Xattrs corrupted. */
 };
 
+/** The string representation of the file_state enum values. */
 static char const * const file_state_str[] = {
 	"FAULT",
 	"OK",
-	"OK",
+	"HASH OK",
 	"NEW",
 	"OUTDATED",
 	"BACKDATED",
 	"CORRUPT",
 	"INVALID",
 };
+
+
+/* Forward declarations. */
+static int process_path2(const char *filename, struct parent_dirs *parents);
 
 /**
  * Prints information about a file's state.
@@ -168,25 +193,198 @@ static enum file_state get_file_state(int fd, xa_t *stored, xa_t *actual)
 /**
  * Checks if a file's stored hash and timestamp match the current values.
  *
+ * @param fd        A readable open file descriptor to the file to check.
  * @param filename  The file to check.
+ * @param st        The stat() structure of the file to check.
  *
  * @retval 0  The file was processed successfully.
  * @retval >0 An recoverable error occurred.
  * @retval <0 A fatal error occurred.
  */
-int check_file(const char *filename)
+static int check_file(int fd, const char *filename, struct stat *st)
 {
 	enum file_state state;
+	int err;
+	xa_t a;
+	xa_t s;
+
+	assert(fd >= 0);
+	assert(filename != NULL);
+	assert(st != NULL);
+
+	assert(S_ISREG(st->st_mode));
+
+	pr_debug("Processing file: %s\n", filename);
+
+	a = s = (xa_t){ .alg = args.alg };
+
+	a.mtime = st->st_mtim;
+
+	state = get_file_state(fd, &s, &a);
+	if (state == FILE_FAULT) {
+		pr_err("Error: failed to get file state \"%s\": %m\n", filename);
+		return -1;
+	}
+
+	print_state(state, filename, &s, &a);
+
+	if (state == FILE_OK)
+		return 0;
+
+	if (args.dry_run)
+		return 0;
+
+	/* Don't update the stored xattrs unless -f is specified for backdated,
+	 * corrupt, fault, or invalid files.
+	 */
+	if (!args.force) {
+		if (state == FILE_BACKDATED)
+			return 0;
+		if (state == FILE_CORRUPT)
+			return 0;
+		if (state == FILE_FAULT)
+			return 0;
+		if (state == FILE_INVALID)
+			return 0;
+	}
+
+	err = xa_write(fd, &a);
+	if (err != 0) {
+		pr_err("Error: could not write extended attributes to file \"%s\": %m\n", filename);
+		return 2;
+	}
+
+	return 0;
+}
+
+/**
+ * Figure out whether a file path is a file or directory and process it.
+ *
+ * If @p filename is a regular file, this will pass it to check_file().
+ *
+ * If @p filename is a directory and --recursive was set on the command-line,
+ * this will pass it on to check_dir().
+ *
+ * @param filename  The path to check.
+ * @param parents   The parent directories' inodes (to check for loops).
+ *
+ * @retval 0  The file was processed successfully.
+ * @retval >0 An recoverable error occurred.
+ * @retval <0 A fatal error occurred.
+ */
+static int check_dir(int fd, const char *filename, struct stat *st, struct parent_dirs *parents)
+{
+	char *buffer;
+	int ret = 0;
+	int err;
+	size_t i;
+	struct dirent *entry;
+	DIR *dirp;
+
+	assert(filename != NULL);
+	assert(parents != NULL);
+
+	pr_debug("Processing dir: %s\n", filename);
+
+	/* Check for filesystem loop. */
+	for (i = 0; i < parents->count; i++) {
+		if (parents->data[i].inode != st->st_ino)
+			continue;
+		if (parents->data[i].device != st->st_dev)
+			continue;
+
+		pr_err("File system loop detected at \"%s\"\n", filename);
+		close(fd);
+		return 1;
+	}
+
+	/* Allocate more space in the parents struct if necessary. */
+	if (parents->count >= parents->allocated) {
+		void *tmp;
+
+		parents->allocated += 16;
+
+		tmp = realloc(parents->data, parents->allocated * sizeof(parents->data[0]));
+		if (tmp == NULL) {
+			parents->allocated -= 16;
+			close(fd);
+			return -1;
+		}
+
+		parents->data = tmp;
+	}
+
+	dirp = fdopendir(fd);
+	if (dirp == NULL) {
+		pr_err("Failed to open directory \"%s\": %m\n", filename);
+		close(fd);
+		return 1;
+	}
+
+	fd = -1;
+
+	/* Add the current dir to the parents struct. */
+	parents->data[parents->count].device = st->st_dev;
+	parents->data[parents->count].inode  = st->st_ino;
+	parents->count++;
+
+	while ((entry = readdir(dirp)) != NULL) {
+		/* Ignore "." and ".." entries. */
+		if (entry->d_name[0] == '.') {
+			if (entry->d_name[1] == '\0')
+				continue;
+			if (entry->d_name[1] == '.' && entry->d_name[2] == '\0')
+				continue;
+		}
+
+		err = asprintf(&buffer, "%s/%s", filename, entry->d_name);
+		if (err < 0) {
+			pr_err("Error formatting directory entry \"%s\"/\"%s\": %m\n",
+				filename, entry->d_name);
+			ret = -1;
+			break;
+		}
+
+		err = process_path2(buffer, parents);
+		free(buffer);
+		if (err != 0) {
+			ret = err;
+			if (err < 0)
+				break;
+		}
+
+	}
+
+	parents->count--;
+	parents->data[parents->count].inode = 0;
+	closedir(dirp);
+
+	return ret;
+}
+
+/**
+ * Figure out whether a file path is a file or directory and process it.
+ *
+ * If @p filename is a regular file, this will pass it to check_file().
+ *
+ * If @p filename is a directory and --recursive was set on the command-line,
+ * this will pass it on to check_dir().
+ *
+ * @param filename  The path to check.
+ * @param parents   The parent directories' inodes (to check for loops).
+ *
+ * @retval 0  The file was processed successfully.
+ * @retval >0 An recoverable error occurred.
+ * @retval <0 A fatal error occurred.
+ */
+static int process_path2(const char *filename, struct parent_dirs *parents)
+{
 	int ret = 0;
 	int err;
 	int fd;
 	struct stat st;
-	xa_t a;
-	xa_t s;
 
 	assert(filename != NULL);
-
-	a = s = (xa_t){ .alg = args.alg };
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
@@ -197,54 +395,54 @@ int check_file(const char *filename)
 	err = fstat(fd, &st);
 	if (err != 0) {
 		pr_err("Error: could not stat file \"%s\": %m\n", filename);
-		ret = -1;
-		goto close_out;
+		close(fd);
+		return -1;
 	}
 
-	if (!S_ISREG(st.st_mode)) {
-		pr_err("Error: \"%s\": not a regular file\n", filename);
-		ret = 1;
-		goto close_out;
+	if (S_ISREG(st.st_mode)) {
+		ret = check_file(fd, filename, &st);
+		close(fd);
+	}
+	else if (S_ISDIR(st.st_mode)) {
+		if (!args.recursive) {
+			pr_err("Error: \"%s\" is a directory\n", filename);
+			close(fd);
+			return 1;
+		}
+
+		ret = check_dir(fd, filename, &st, parents);
+	}
+	else {
+		pr_err("Error: \"%s\": not a regular file or directory\n", filename);
+		close(fd);
+		return 1;
 	}
 
-	a.mtime = st.st_mtim;
+	return ret;
+}
 
-	state = get_file_state(fd, &s, &a);
-	if (state == FILE_FAULT) {
-		pr_err("Error: failed to get file state \"%s\": %m\n", filename);
-		ret = -1;
-		goto close_out;
-	}
+/**
+ * Figure out whether a file path is a file or directory and process it.
+ *
+ * If @p filename is a regular file, this will pass it to check_file().
+ *
+ * If @p filename is a directory and --recursive was set on the command-line,
+ * this will pass it on to check_dir().
+ *
+ * @param filename  The path to check.
+ *
+ * @retval 0  The file was processed successfully.
+ * @retval >0 An recoverable error occurred.
+ * @retval <0 A fatal error occurred.
+ */
+int process_path(const char *filename)
+{
+	int ret;
+	struct parent_dirs parents = { NULL, 0, 0 };
 
-	print_state(state, filename, &s, &a);
+	ret = process_path2(filename, &parents);
 
-	if (state == FILE_OK)
-		goto close_out;
+	free(parents.data);
 
-	if (args.dry_run)
-		goto close_out;
-
-	/* Don't update the stored xattrs unless -f is specified for backdated,
-	 * corrupt, fault, or invalid files.
-	 */
-	if (!args.force) {
-		if (state == FILE_BACKDATED)
-			goto close_out;
-		if (state == FILE_CORRUPT)
-			goto close_out;
-		if (state == FILE_FAULT)
-			goto close_out;
-		if (state == FILE_INVALID)
-			goto close_out;
-	}
-
-	err = xa_write(fd, &a);
-	if (err != 0) {
-		pr_err("Error: could not write extended attributes to file \"%s\": %m\n", filename);
-		ret = 2;
-	}
-
-close_out:
-	close(fd);
 	return ret;
 }

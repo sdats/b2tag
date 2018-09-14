@@ -23,7 +23,8 @@ DESCRIPTION
             corrupt     checksum is wrong and mtime matches the sha tag
             invalid     sha tag attributes are corrupt
             new         sha tag attributes have not been set
-            ok          checksum is correct
+            ok          checksum is correct and the mtime matches
+            hash ok     checksum is correct and the mtime has changed
             outdated    checksum is wrong and mtime is newer than the sha tag
                         (the file has been updated since the last run)
 
@@ -48,6 +49,9 @@ OPTIONS
               Only  print errors including checksum failures. Can be specified
               multiple times to print even fewer messages. This is  the  oppo‐
               site of --verbose.
+
+       -r, --recursive
+              Process directories and their contents (not just files).
 
        -v, --verbose
               Print  more verbose messages error and warnings messages. Can be

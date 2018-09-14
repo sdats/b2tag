@@ -32,7 +32,9 @@ File statuses are:
 .br
 	new         sha tag attributes have not been set
 .br
-	ok          checksum is correct
+	ok          checksum is correct and the mtime matches
+.br
+	hash ok     checksum is correct and the mtime has changed
 .br
 	outdated    checksum is wrong and mtime is newer than the sha tag
 .br
@@ -59,6 +61,9 @@ Don't update any stored attributes.
 Only print errors including checksum failures. Can be specified multiple times
 to print even fewer messages. This is the opposite of
 .B --verbose.
+.TP
+.BR \-r ", " \-\^\-recursive
+Process directories and their contents (not just files).
 .TP
 .BR \-v ", " \-\^\-verbose
 Print more verbose messages error and warnings messages. Can be specified

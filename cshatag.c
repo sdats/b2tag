@@ -64,6 +64,7 @@ static void usage(const char *program)
 		"  -h, --help            show this help message and exit\n"
 		"  -n, --dry-run         don't update any stored attributes\n"
 		"  -q, --quiet           only print errors (including checksum failures)\n"
+		"  -r, --recursive       process directories and their contents (not just files)\n"
 		"  -v, --verbose         print all checksums (not just missing/changed)\n"
 		"  -V, --version         output version information and exit\n"
 		"\n"
@@ -85,6 +86,7 @@ static const struct option long_opts[] = {
 	{ "force",      no_argument, 0, 'f' },
 	{ "help",       no_argument, 0, 'h' },
 	{ "quiet",      no_argument, 0, 'q' },
+	{ "recursive",  no_argument, 0, 'r' },
 	{ "verbose",    no_argument, 0, 'v' },
 	{ "version",    no_argument, 0, 'V' },
 	{ "md5",        no_argument, 0,  0  },
@@ -114,7 +116,7 @@ int main(int argc, char *argv[])
 
 	args.alg = DEFAULT_HASHALG;
 
-	while ((opt = getopt_long(argc, argv, "cfhnqvV", long_opts, &option_index)) != -1) {
+	while ((opt = getopt_long(argc, argv, "cfhnqrvV", long_opts, &option_index)) != -1) {
 		switch (opt) {
 		case 0:
 			args.alg = long_opts[option_index].name;
@@ -133,6 +135,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'q':
 			args.verbose--;
+			break;
+		case 'r':
+			args.recursive = true;
 			break;
 		case 'v':
 			args.verbose++;
@@ -165,7 +170,7 @@ int main(int argc, char *argv[])
 	}
 
 	while (argc >= 1) {
-		int err = check_file(argv[0]);
+		int err = process_path(argv[0]);
 		if (err < 0)
 			return ret;
 		else if (ret == 0 && err > 0)
