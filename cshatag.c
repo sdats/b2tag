@@ -170,7 +170,15 @@ int main(int argc, char *argv[])
 	}
 
 	while (argc >= 1) {
-		int err = process_path(argv[0]);
+		int err;
+		char *pos = argv[0] + strlen(argv[0]) - 1;
+
+		/* Remove trailing slashes */
+		while (pos > argv[0] && *pos == '/')
+			*pos-- = '\0';
+
+		err = process_path(argv[0]);
+
 		if (err < 0)
 			return ret;
 		else if (ret == 0 && err > 0)
