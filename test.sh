@@ -28,7 +28,7 @@ TEST_MESSAGE=${TEST_MESSAGE:-Hello World!}
 function fail()
 {
 	echo "$*" >&2
-	RET=$((RET++))
+	return 1
 }
 
 set -o pipefail
@@ -43,42 +43,53 @@ fi
 if [[ -e $TEST_FILE ]]; then
 	echo "Warning: test.txt already exists. Removing." >&2
 	rm "$TEST_FILE" \
-		|| fail "Could not remove old test file"
+		|| fail "Could not remove old test file" \
+		|| let RET++
 fi
 
 # Test setup: create the test file, hash the test message, and grab the
 # test file's modified time
 echo "$TEST_MESSAGE" > "$TEST_FILE" \
-	|| fail "Could not create test file: $?"
+	|| fail "Could not create test file: $?" \
+	|| let RET++
 
 HASH=$(echo "$TEST_MESSAGE" | sha256sum | cut -d' ' -f1) \
-	|| fail "Could not generate reference hash: $?"
+	|| fail "Could not generate reference hash: $?" \
+	|| let RET++
 
 MTIME=$(stat --format='%.Y' "$TEST_FILE") \
-	|| fail "Could not read test file mtime: $?"
+	|| fail "Could not read test file mtime: $?" \
+	|| let RET++
 
 # Make sure the newly-created test file doesn't have the shatag xattrs
 TAG_TS=$(getfattr --only-values --name=user.shatag.ts "$TEST_FILE" 2>/dev/null)
 TAG_VAL=$(getfattr --only-values --name=user.shatag.sha256 "$TEST_FILE" 2>/dev/null)
 
 [[ -z $TAG_TS ]]  \
-	|| fail "Shatag timestamp already set."
+	|| fail "Shatag timestamp already set." \
+	|| let RET++
 [[ -z $TAG_VAL ]] \
-	|| fail "Shatag value already set."
+	|| fail "Shatag value already set." \
+	|| let RET++
 
 # Make sure cshatag adds the proper xattrs
 ./cshatag $args "$TEST_FILE" \
-	|| fail "cshatag returned failure: $?"
+	|| fail "cshatag returned failure: $?" \
+	|| let RET++
 
 TAG_TS=$(getfattr --only-values --name=user.shatag.ts "$TEST_FILE") \
-	|| fail "Could not read test file timestamp attribute: $?"
+	|| fail "Could not read test file timestamp attribute: $?" \
+	|| let RET++
 TAG_VAL=$(getfattr --only-values --name=user.shatag.sha256 "$TEST_FILE") \
-	|| fail "Could not read test file hash value attribute: $?"
+	|| fail "Could not read test file hash value attribute: $?" \
+	|| let RET++
 
 [[ $MTIME = $TAG_TS ]] \
-	|| fail "Shatag timestamp mismatch: $MTIME != $TAG_TS"
+	|| fail "Shatag timestamp mismatch: $MTIME != $TAG_TS" \
+	|| let RET++
 [[ $HASH = $TAG_VAL ]] \
-	|| fail "Shatag value mismatch: $HASH != $TAG_VAL"
+	|| fail "Shatag value mismatch: $HASH != $TAG_VAL" \
+	|| let RET++
 
 # If the test was successful, remove the test file
 if [[ $RET -eq 0 ]]; then
