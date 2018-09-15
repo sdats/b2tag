@@ -31,6 +31,16 @@ function fail()
 	return 1
 }
 
+function to_hex()
+{
+	xxd -p | tr -d '\n'
+}
+
+function from_hex()
+{
+	xxd -p -r
+}
+
 set -o pipefail
 
 # set -x if the "V" environment variable is set
@@ -62,13 +72,13 @@ MTIME=$(stat --format='%.Y' "$TEST_FILE") \
 	|| let RET++
 
 # Make sure the newly-created test file doesn't have the shatag xattrs
-TAG_TS=$(getfattr --only-values --name=user.shatag.ts "$TEST_FILE" 2>/dev/null)
-TAG_VAL=$(getfattr --only-values --name=user.shatag.sha256 "$TEST_FILE" 2>/dev/null)
+TAG_TS_HEX=$(getfattr --only-values --name=user.shatag.ts "$TEST_FILE" 2>/dev/null | to_hex)
+TAG_VAL_HEX=$(getfattr --only-values --name=user.shatag.sha256 "$TEST_FILE" 2>/dev/null | to_hex)
 
-[[ -z $TAG_TS ]]  \
+[[ -z $TAG_TS_HEX ]]  \
 	|| fail "Shatag timestamp already set." \
 	|| let RET++
-[[ -z $TAG_VAL ]] \
+[[ -z $TAG_VAL_HEX ]] \
 	|| fail "Shatag value already set." \
 	|| let RET++
 
@@ -77,19 +87,38 @@ TAG_VAL=$(getfattr --only-values --name=user.shatag.sha256 "$TEST_FILE" 2>/dev/n
 	|| fail "cshatag returned failure: $?" \
 	|| let RET++
 
-TAG_TS=$(getfattr --only-values --name=user.shatag.ts "$TEST_FILE") \
+TAG_TS_HEX=$(getfattr --only-values --name=user.shatag.ts "$TEST_FILE" | to_hex) \
 	|| fail "Could not read test file timestamp attribute: $?" \
 	|| let RET++
-TAG_VAL=$(getfattr --only-values --name=user.shatag.sha256 "$TEST_FILE") \
+TAG_VAL_HEX=$(getfattr --only-values --name=user.shatag.sha256 "$TEST_FILE" | to_hex) \
 	|| fail "Could not read test file hash value attribute: $?" \
 	|| let RET++
 
-[[ $MTIME = $TAG_TS ]] \
-	|| fail "Shatag timestamp mismatch: $MTIME != $TAG_TS" \
-	|| let RET++
-[[ $HASH = $TAG_VAL ]] \
-	|| fail "Shatag value mismatch: $HASH != $TAG_VAL" \
-	|| let RET++
+if [[ ! $TAG_TS_HEX =~ ^(3[0-9]|2[Ee])+$ ]]; then
+	fail "Tag timestamp contains non-numeric characters (0-9, .)"
+	echo "Timestamp:"
+	# Do a pretty hex dump rather than the plain hex
+	from_hex <<<"$TAG_TS_HEX" | xxd
+	let RET++
+else
+	TAG_TS=$(from_hex <<<"$TAG_TS_HEX")
+	[[ $MTIME = $TAG_TS ]] \
+		|| fail "Shatag timestamp mismatch: $MTIME != $TAG_TS" \
+		|| let RET++
+fi
+
+if [[ ! $TAG_VAL_HEX =~ ^(3[0-9]|[46][1-6])+$ ]]; then
+	fail "Tag value contains non-hex characters (0-9, a-f, A-F)"
+	echo "Value:"
+	# Do a pretty hex dump rather than the plain hex
+	from_hex <<<"$TAG_VAL_HEX" | xxd
+	let RET++
+else
+	TAG_VAL=$(from_hex <<<"$TAG_VAL_HEX")
+	[[ $HASH = $TAG_VAL ]] \
+		|| fail "Shatag value mismatch: $HASH != $TAG_VAL" \
+		|| let RET++
+fi
 
 # If the test was successful, remove the test file
 if [[ $RET -eq 0 ]]; then
