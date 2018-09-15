@@ -69,9 +69,9 @@ static void usage(const char *program)
 		"  -V, --version         output version information and exit\n"
 		"\n"
 		"Hash algorithms:\n"
-		"  --md5 (deprecated)    --sha1 (deprecated)\n"
-		"  --sha256 (default)    --sha512 (recommended on 64-bit)\n"
-		"  --blake2s256          --blake2b512\n"
+		"  --md5 (deprecated)               --sha1 (deprecated)\n"
+		"  --sha256 (shatag compatible)     --sha512\n"
+		"  --blake2 (512-bit, recommended)\n"
 		"\n"
 		"Note: the original shatag python utility only supports sha256.\n",
 		program);
@@ -93,8 +93,8 @@ static const struct option long_opts[] = {
 	{ "sha1",       no_argument, 0,  0  },
 	{ "sha256",     no_argument, 0,  0  },
 	{ "sha512",     no_argument, 0,  0  },
-	{ "blake2s256", no_argument, 0,  0  },
 	{ "blake2b512", no_argument, 0,  0  },
+	{ "blake2",     no_argument, 0,  1  },
 	{ NULL, 0, 0, 0 }
 };
 
@@ -120,6 +120,9 @@ int main(int argc, char *argv[])
 		switch (opt) {
 		case 0:
 			args.alg = long_opts[option_index].name;
+			break;
+		case 1:
+			args.alg = "blake2b512";
 			break;
 		case 'c':
 			args.check = true;

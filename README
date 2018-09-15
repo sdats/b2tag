@@ -69,23 +69,19 @@ OPTIONS
               Use the SHA256 hash algorithm (default, used by shatag).
 
        --sha512
-              Use  the  SHA512  hash  algorithm (recommended on 64-bit systems
-              which don't require shatag compatibility).
+              Use the SHA512 hash algorithm.
 
-       --blake2s256
-              Use the Blake2s hash algorithm.
-
-       --blake2b512
-              Use the Blake2b hash algorithm.
+       --blake2
+              Use the Blake2b 512-bit hash algorithm (recommended).
 
 EXAMPLES
        Typically, cshatag will be called from find:
        # find / -xdev -type f -exec cshatag {} \; > cshatag.log
-       Errors like corrupt files will then be printed to stderr  or  grep  for
+       Errors  like  corrupt  files will then be printed to stderr or grep for
        "corrupt" in cshatag.log.
 
        To remove the extended attributes from all files:
-       #  find  /  -xdev  -type f -exec setfattr -x user.shatag.ts {} \; -exec
+       # find / -xdev -type f -exec setfattr -x  user.shatag.ts  {}  \;  -exec
        setfattr -x user.shatag.sha256 {} ;
 
 RETURN VALUE
@@ -97,7 +93,7 @@ RETURN VALUE
        5 File is corrupt
 
 COMPATIBILITY
-       cshatag writes the user.shatag.ts field with  full  integer  nanosecond
+       cshatag  writes  the  user.shatag.ts field with full integer nanosecond
        precision, while python uses a double for the whole mtime and loses the
        last few digits.
 
@@ -108,10 +104,10 @@ COPYRIGHT
        Copyright © 2012 Jakob Unterwurzacher.
        Copyright © 2018 Tim Schlueter.
 
-       License     GPLv2+:     GNU     GPL     version     2     or      later
+       License      GPLv2+:     GNU     GPL     version     2     or     later
        <https://www.gnu.org/licenses/licenses.html>.
 
-       This  is  free  software:  you  are free to change and redistribute it.
+       This is free software: you are free  to  change  and  redistribute  it.
        There is NO WARRANTY, to the extent permitted by law.
 
 SEE ALSO
