@@ -1,20 +1,18 @@
 CSHATAG(1)                       User Commands                      CSHATAG(1)
 
 NAME
-       cshatag - shatag in C
+       cshatag - detect data corruption with checksums in extended attributes.
 
 SYNOPSIS
-       cshatag [-h] [-n] [-q] [-v] [-V] FILE [FILE...]
+       cshatag [OPTION]... <FILE>...
 
 DESCRIPTION
-       cshatag is a minimal re-implementation in C of shatag
-       (  https://bitbucket.org/maugier/shatag  written  in  python  by Maxime
-       Augier )
+       cshatag is a re-implementation of shatag in C.
 
        cshatag is a tool to detect silent data corruption. It writes the mtime
-       and  the  checksum  of  a file into the file's extended attributes. The
-       filesystem needs to be mounted with  user_xattr  enabled  for  this  to
-       work.  When  run  again,  it  compares stored mtime and checksum. If it
+       and the checksum of a file into the  file's  extended  attributes.  The
+       filesystem  needs  to  be  mounted  with user_xattr enabled for this to
+       work. When run again, it compares stored  mtime  and  checksum.  If  it
        finds that the mtime is unchanged but the checksum has changed, it will
        print a warning message.
 
@@ -28,12 +26,26 @@ DESCRIPTION
             outdated    checksum is wrong and mtime is newer than the sha tag
                         (the file has been updated since the last run)
 
-       cshatag  aims  to  be  format-compatible  with shatag and uses the same
+       Unless --dry-run is specified, cshatag  will  automatically  store  the
+       checksums  and  timestamps timestamps for new files and will update the
+       stored checksums and timestamps for hash ok and outdated files.
+
+       cshatag will not automatically update the stored  checksums  and  time‐
+       stamps for backdated, corrupt, or invalid files unless --force is spec‐
+       ified.
+
+       cshatag aims to be format-compatible with  shatag  and  uses  the  same
        extended attributes (see the COMPATIBILITY section).
 
 OPTIONS
+   POSITIONAL ARGUMENTS
+       FILE   Files to check and hash.
+
+   OPTIONAL ARGUMENTS
        -c, --check
               Check the hashes on all specified files.
+              Without  this  option,  cshatag  assumes all files with the same
+              timestamp are OK without checking the files' contents.
 
        -f, --force
               Update the stored hashes for backdated,  corrupted,  or  invalid
@@ -43,33 +55,35 @@ OPTIONS
               Output a usage message and exit.
 
        -n, --dry-run
-              Don't update any stored attributes.
+              Don't  create  or  update  any  extended  attributes (no on-disk
+              changes).  This will still read and hash the files as normal.
 
        -p, --print
               Print the hashes of all specified files in the sha*sum format.
 
        -q, --quiet
-              Only  print errors including checksum failures. Can be specified
-              multiple times to print even fewer messages. This is  the  oppo‐
+              Only print errors including checksum failures. Can be  specified
+              multiple  times  to print even fewer messages. This is the oppo‐
               site of --verbose.
 
        -r, --recursive
               Process directories and their contents (not just files).
 
        -v, --verbose
-              Print  more verbose messages error and warnings messages. Can be
-              specified multiple times to print even more  messages.  This  is
+              Print more verbose messages error and warnings messages. Can  be
+              specified  multiple  times  to print even more messages. This is
               the opposite of --quiet.
 
        -V, --version
               Output version information about cshatag and exit.
 
-       --md5  Use the MD5 hash algorithm (deprecated, not recommended).
+   HASH ALGORITHMS
+       --md5  Use the MD5 hash algorithm (not recommended).
 
-       --sha1 Use the SHA1 hash algorithm (deprecated, not recommended).
+       --sha1 Use the SHA1 hash algorithm (not recommended).
 
        --sha256
-              Use the SHA256 hash algorithm (default, used by shatag).
+              Use the SHA256 hash algorithm (default, shatag compatible).
 
        --sha512
               Use the SHA512 hash algorithm.
@@ -78,27 +92,58 @@ OPTIONS
               Use the Blake2b 512-bit hash algorithm (recommended).
 
 EXAMPLES
-       Typically, cshatag will be called from find:
-       # find / -xdev -type f -exec cshatag {} \; > cshatag.log
-       Errors  like  corrupt  files will then be printed to stderr or grep for
-       "corrupt" in cshatag.log.
+       Create or update the stored hashes for a file:
+
+       cshatag example.txt
+
+       Verify that a file matches its stored attributes with the  blake2  hash
+       algorithm:
+
+       cshatag -c --blake2 example.txt
+
+       Verify all files in a directory, and filter-out OK file messages:
+
+       cshatag -cr /example/ | grep -v ': OK$'
+
+       Print a file's stored sha512 hashes:
+
+       cshatag -p --sha512 example.txt > example.sha512
+
+       This  allows you to verify the file's contents with the sha512sum util‐
+       ity (e.g. after copying the files  to  another  system  without  shatag
+       installed):
+
+       sha512sum -c example.sha512
+
+       Copy a file to a different system and verify its contents:
+
+       rsync -tX example.txt user@example.com:example.txt
+       ssh user@example.com cshatag -cn example.txt
+
+       Create  and  update  the  hashes  for  all  files over 1 MB on the root
+       filesystem:
+
+       find /  -xdev  -type  f  -size  +1M  -print0  |  xargs  -r0  cshatag  >
+       cshatag.log
 
        To remove the extended attributes from all files:
-       # find / -xdev -type f -exec setfattr -x  user.shatag.ts  {}  \;  -exec
-       setfattr -x user.shatag.sha256 {} ;
 
-RETURN VALUE
+       find  / -xdev -type f -exec setfattr -x user.shatag.ts {} \; -exec set‐
+       fattr -x user.shatag.sha256 {} \;
+
+EXIT STATUS
        0 Success
-       1 Wrong number of arguments
-       2 File could not be opened
-       3 File is not a regular file
-       4 Extended attributs could not be written to file
-       5 File is corrupt
+       >0 An error occurred or at least  1  file  is  backdated,  corrupt,  or
+       invalid
 
 COMPATIBILITY
-       cshatag  writes  the  user.shatag.ts field with full integer nanosecond
-       precision, while python uses a double for the whole mtime and loses the
-       last few digits.
+       cshatag writes the user.shatag.ts field with full nanosecond precision,
+       while the original shatag utility (in python) uses  a  double  for  the
+       whole mtime and loses ~200 ns of resolution. To deal with this, cshatag
+       treats timestamps within 1 µs as equal.
+
+       The original shatag utility also only supports the  sha256  hash  algo‐
+       rithm.
 
 AUTHOR
        Written by Jakob Unterwurzacher, and Tim Schlueter.
@@ -116,4 +161,10 @@ COPYRIGHT
 SEE ALSO
        shatag(1), sha256sum(1), getfattr(1), setfattr(1)
 
-cshatag 0.1                       August 2018                       CSHATAG(1)
+       The current version is available via http:
+       https://github.com/modelrockettier/cshatag
+
+       The original shatag utility, written in python by Maxime Augier:
+       https://bitbucket.org/maugier/shatag
+
+cshatag 0.1                     September 2018                      CSHATAG(1)
