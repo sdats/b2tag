@@ -120,6 +120,31 @@ static void print_state(enum file_state state, const char *filename, xa_t *store
 }
 
 /**
+ * Prints information about a file in the sha*sum format.
+ *
+ * @param state     The file's state (e.g. ok).
+ * @param filename  The name of the file.
+ * @param stored    The file's stored attributes (may be NULL).
+ * @param actual    The file's actual attributes (may be NULL).
+ *
+ * @retval 0  The file was processed successfully.
+ * @retval >0 An recoverable error occurred.
+ * @retval <0 A fatal error occurred.
+ */
+static void print_sum(enum file_state state __attribute__((unused)),
+	const char *filename, xa_t *stored, xa_t *actual)
+{
+	assert(filename != NULL);
+
+	if (actual != NULL && actual->valid)
+		printf("%s  %s\n", actual->hash, filename);
+	else if (stored != NULL && stored->valid)
+		printf("%s  %s\n", stored->hash, filename);
+	else
+		pr_err("Error no hash found for \"%s\"\n", filename);
+}
+
+/**
  * Checks if a file's stored hash and timestamp match the current values.
  *
  * @note @p stored and @p actual may be filled with data depending on the
@@ -226,7 +251,11 @@ static int check_file(int fd, const char *filename, struct stat *st)
 		return -1;
 	}
 
-	print_state(state, filename, &s, &a);
+	/* Whether to print the file status or the sha*sum data. */
+	if (args.print)
+		print_sum(state, filename, &s, &a);
+	else
+		print_state(state, filename, &s, &a);
 
 	if (state == FILE_OK)
 		return 0;

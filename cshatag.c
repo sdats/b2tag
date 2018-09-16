@@ -63,6 +63,7 @@ static void usage(const char *program)
 		"                        invalid files\n"
 		"  -h, --help            show this help message and exit\n"
 		"  -n, --dry-run         don't update any stored attributes\n"
+		"  -p, --print           print the hashes of all specified files\n"
 		"  -q, --quiet           only print errors (including checksum failures)\n"
 		"  -r, --recursive       process directories and their contents (not just files)\n"
 		"  -v, --verbose         print all checksums (not just missing/changed)\n"
@@ -85,6 +86,7 @@ static const struct option long_opts[] = {
 	{ "dry-run",    no_argument, 0, 'n' },
 	{ "force",      no_argument, 0, 'f' },
 	{ "help",       no_argument, 0, 'h' },
+	{ "print",      no_argument, 0, 'p' },
 	{ "quiet",      no_argument, 0, 'q' },
 	{ "recursive",  no_argument, 0, 'r' },
 	{ "verbose",    no_argument, 0, 'v' },
@@ -116,7 +118,7 @@ int main(int argc, char *argv[])
 
 	args.alg = DEFAULT_HASHALG;
 
-	while ((opt = getopt_long(argc, argv, "cfhnqrvV", long_opts, &option_index)) != -1) {
+	while ((opt = getopt_long(argc, argv, "cfhnpqrvV", long_opts, &option_index)) != -1) {
 		switch (opt) {
 		case 0:
 			args.alg = long_opts[option_index].name;
@@ -135,6 +137,9 @@ int main(int argc, char *argv[])
 			return EXIT_SUCCESS;
 		case 'n':
 			args.dry_run = true;
+			break;
+		case 'p':
+			args.print = true;
 			break;
 		case 'q':
 			args.verbose--;

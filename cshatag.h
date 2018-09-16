@@ -36,6 +36,8 @@ struct args_s {
 	bool dry_run;
 	/** Whether to update the hashes on backdated, corrupt, or invalid files. */
 	bool force;
+	/** Print file hashes in the standard sha*sum, etc. format. */
+	bool print;
 	/** Process all files under the specified directories. */
 	bool recursive;
 	/** The verbosity level (how many messages to print). */
