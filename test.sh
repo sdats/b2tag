@@ -230,15 +230,17 @@ for ALG in '' md5 sha1 sha256 sha512 blake2; do
 		|| fail "Could not read test file mtime: $?" \
 		|| let RET++
 
+	ALG_NAME="${ALG:-default}"
+
 	clear_attr ts "$TEST_FILE"
 
 	# Make sure the newly-created test file doesn't have the shatag xattrs
-	echo "Test sanity ($ALG)"
+	echo "Test sanity ($ALG_NAME)"
 	check_ts   "$TEST_FILE" "" || let RET++
 	check_hash "$TEST_FILE" "" $ALG || let RET++
 
 	# Make sure cshatag doesn't add xattrs when -n is given
-	echo "Test dry-run ($ALG)"
+	echo "Test dry-run ($ALG_NAME)"
 	./cshatag -n $args --$ALG "$TEST_FILE" \
 		|| fail "cshatag returned failure: $?" \
 		|| let RET++
@@ -247,7 +249,7 @@ for ALG in '' md5 sha1 sha256 sha512 blake2; do
 	check_hash "$TEST_FILE" "" $ALG || let RET++
 
 	# Make sure cshatag adds the proper xattrs
-	echo "Test new file ($ALG)"
+	echo "Test new file ($ALG_NAME)"
 	./cshatag $args --$ALG "$TEST_FILE" \
 		|| fail "cshatag returned failure: $?" \
 		|| let RET++
@@ -256,7 +258,7 @@ for ALG in '' md5 sha1 sha256 sha512 blake2; do
 	check_hash "$TEST_FILE" "$HASH" $ALG || let RET++
 
 	# Print test
-	echo "Test print file hashes ($ALG)"
+	echo "Test print file hashes ($ALG_NAME)"
 	./cshatag -p $args --$ALG "$TEST_FILE" | hash "$ALG" -c - >/dev/null \
 		|| fail "cshatag returned failure: $?" \
 		|| let RET++
