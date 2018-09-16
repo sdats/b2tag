@@ -169,11 +169,16 @@ COPYRIGHT
        Copyright © 2012 Jakob Unterwurzacher.
        Copyright © 2018 Tim Schlueter.
 
-       License GPLv2+: GNU GPL version 2 or later
+       License: GPLv2+ with OpenSSL exception
+
+       GNU GPL version 2 or later
        <https://www.gnu.org/licenses/licenses.html>.
 
        This is free software: you are free to change and redistribute it.
        There is NO WARRANTY, to the extent permitted by law.
+
+       As a special exception to the GPL, you may link the code with the
+       OpenSSL library (see the source files for more details).
 
 SEE ALSO
        shatag(1), sha256sum(1), getfattr(1), setfattr(1)
