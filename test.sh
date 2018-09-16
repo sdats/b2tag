@@ -23,7 +23,7 @@ RET=0
 # Allow overriding the test file any test message: simply set the
 # corresponding environment variable.
 TEST_FILE=${TEST_FILE:-test.txt}
-TEST_MESSAGE=${TEST_MESSAGE:-Hello World!}
+TEST_MESSAGE=${TEST_MESSAGE:-The quick brown fox jumped over the lazy dog.}
 
 function fail() {
 	echo "$*" >&2
@@ -39,7 +39,6 @@ function from_hex() {
 }
 
 function hash() {
-	[[ $# -ge 1 ]] || return 1
 	local alg="${1:-sha256}"
 	local prog
 
@@ -75,7 +74,7 @@ function get_attr_hex() {
 
 function clear_attr() {
 	[[ $# -ge 2 ]] \
-		&& setfattr -x "user.shatag.$1" "${@:2}"
+		&& setfattr -x "user.shatag.$1" "${@:2}" 2>/dev/null
 }
 
 function print_ts() {
@@ -213,80 +212,59 @@ if [[ -e $TEST_FILE ]]; then
 		|| let RET++
 fi
 
+echo "$TEST_MESSAGE" > "$TEST_FILE" \
+	|| fail "Could not create test file: $?" \
+	|| let RET++
+
+check_ts   "$TEST_FILE" "" || let RET++
+check_hash "$TEST_FILE" "" $ALG || let RET++
+
 # Test setup: create the test file, hash the test message, and grab the
 # test file's modified time
-HASH=$(echo "$TEST_MESSAGE" | tee "$TEST_FILE" | hash sha256) \
-	|| fail "Could not generate sha256 reference hash: $?" \
-	|| let RET++
+for ALG in '' md5 sha1 sha256 sha512 blake2; do
+	HASH=$(echo "$TEST_MESSAGE" | hash $ALG) \
+		|| fail "Could not generate $ALG reference hash: $?" \
+		|| let RET++
 
-MTIME=$(get_mtime "$TEST_FILE") \
-	|| fail "Could not read test file mtime: $?" \
-	|| let RET++
+	MTIME=$(get_mtime "$TEST_FILE") \
+		|| fail "Could not read test file mtime: $?" \
+		|| let RET++
 
-# Make sure the newly-created test file doesn't have the shatag xattrs
-echo "Test sanity (sha256)"
-check_ts   "$TEST_FILE" "" || let RET++
-check_hash "$TEST_FILE" "" sha256 || let RET++
+	clear_attr ts "$TEST_FILE"
 
-# Make sure cshatag doesn't add xattrs when -n is given
-echo "Test dry-run (sha256)"
-./cshatag -n $args "$TEST_FILE" \
-	|| fail "cshatag returned failure: $?" \
-	|| let RET++
+	# Make sure the newly-created test file doesn't have the shatag xattrs
+	echo "Test sanity ($ALG)"
+	check_ts   "$TEST_FILE" "" || let RET++
+	check_hash "$TEST_FILE" "" $ALG || let RET++
 
-check_ts   "$TEST_FILE" "" || let RET++
-check_hash "$TEST_FILE" "" sha256 || let RET++
+	# Make sure cshatag doesn't add xattrs when -n is given
+	echo "Test dry-run ($ALG)"
+	./cshatag -n $args --$ALG "$TEST_FILE" \
+		|| fail "cshatag returned failure: $?" \
+		|| let RET++
 
-# Make sure cshatag adds the proper xattrs
-echo "Test new file (sha256)"
-./cshatag $args "$TEST_FILE" \
-	|| fail "cshatag returned failure: $?" \
-	|| let RET++
+	check_ts   "$TEST_FILE" "" || let RET++
+	check_hash "$TEST_FILE" "" $ALG || let RET++
 
-check_ts   "$TEST_FILE" "$MTIME" || let RET++
-check_hash "$TEST_FILE" "$HASH" sha256 || let RET++
+	# Make sure cshatag adds the proper xattrs
+	echo "Test new file ($ALG)"
+	./cshatag $args --$ALG "$TEST_FILE" \
+		|| fail "cshatag returned failure: $?" \
+		|| let RET++
 
+	check_ts   "$TEST_FILE" "$MTIME" || let RET++
+	check_hash "$TEST_FILE" "$HASH" $ALG || let RET++
 
-# Check sha512
-echo "Test sanity (sha512)"
-HASH=$(echo "$TEST_MESSAGE" | hash sha512) \
-	|| fail "Could not generate sha512 reference hash: $?" \
-	|| let RET++
+	# Print test
+	echo "Test print file hashes ($ALG)"
+	./cshatag -p $args --$ALG "$TEST_FILE" | hash "$ALG" -c - >/dev/null \
+		|| fail "cshatag returned failure: $?" \
+		|| let RET++
 
-clear_attr ts "$TEST_FILE"
-
-check_ts   "$TEST_FILE" "" || let RET++
-check_hash "$TEST_FILE" "" sha512 || let RET++
-
-# Make sure cshatag adds the proper xattrs
-echo "Test new file (sha512)"
-./cshatag $args --sha512 "$TEST_FILE" \
-	|| fail "cshatag returned failure: $?" \
-	|| let RET++
-
-check_ts   "$TEST_FILE" "$MTIME" || let RET++
-check_hash "$TEST_FILE" "$HASH" sha512 || let RET++
-
-
-# Check blake2
-echo "Test sanity (blake2)"
-HASH=$(echo "$TEST_MESSAGE" | hash blake2) \
-	|| fail "Could not generate blake2 reference hash: $?" \
-	|| let RET++
-
-clear_attr ts "$TEST_FILE"
-
-check_ts   "$TEST_FILE" "" || let RET++
-check_hash "$TEST_FILE" "" blake2 || let RET++
-
-# Make sure cshatag adds the proper xattrs
-echo "Test new file (blake2)"
-./cshatag $args --blake2 "$TEST_FILE" \
-	|| fail "cshatag returned failure: $?" \
-	|| let RET++
-
-check_ts   "$TEST_FILE" "$MTIME" || let RET++
-check_hash "$TEST_FILE" "$HASH" blake2 || let RET++
+	if [[ -z $ALG ]]; then
+		clear_attr sha256 "$TEST_FILE"
+	fi
+done
 
 # If the test was successful, remove the test file
 if [[ $RET -eq 0 ]]; then
