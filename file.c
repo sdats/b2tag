@@ -229,7 +229,7 @@ static enum file_state get_file_state(int fd, xa_t *stored, xa_t *actual)
 static int check_file(int fd, const char *filename, struct stat *st)
 {
 	enum file_state state;
-	int err;
+	int err = 0;
 	xa_t a;
 	xa_t s;
 
@@ -248,7 +248,7 @@ static int check_file(int fd, const char *filename, struct stat *st)
 	state = get_file_state(fd, &s, &a);
 	if (state == FILE_FAULT) {
 		pr_err("Error: failed to get file state \"%s\": %m\n", filename);
-		return -1;
+		return 2;
 	}
 
 	/* Whether to print the file status or the sha*sum data. */
@@ -260,22 +260,27 @@ static int check_file(int fd, const char *filename, struct stat *st)
 	if (state == FILE_OK)
 		return 0;
 
-	if (args.dry_run)
-		return 0;
+	switch (state) {
+	case FILE_BACKDATED:
+	case FILE_CORRUPT:
+	case FILE_FAULT:
+	case FILE_INVALID:
+		err = 1;
 
-	/* Don't update the stored xattrs unless -f is specified for backdated,
-	 * corrupt, fault, or invalid files.
-	 */
-	if (!args.force) {
-		if (state == FILE_BACKDATED)
-			return 0;
-		if (state == FILE_CORRUPT)
-			return 0;
-		if (state == FILE_FAULT)
-			return 0;
-		if (state == FILE_INVALID)
-			return 0;
+		/* Don't update the stored xattrs unless -f is specified for backdated,
+		 * corrupt, fault, or invalid files.
+		 */
+		if (!args.force)
+			return 1;
+
+		break;
+
+	default:
+		break;
 	}
+
+	if (args.dry_run)
+		return err;
 
 	err = xa_write(fd, &a);
 	if (err != 0) {
