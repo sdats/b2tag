@@ -50,7 +50,7 @@ utilities.o utilities.d: CFLAGS += -DVERSION_STRING='"$(VERSION)"'
 utilities.o utilities.d: .version
 
 README: cshatag.1
-	MANWIDTH=80 man -l $< > $@
+	MANWIDTH=80 man --nj -l $< > $@
 
 test: cshatag
 	./test.sh

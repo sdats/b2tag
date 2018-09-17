@@ -1,4 +1,4 @@
-.\"Generate README file for github: MANWIDTH=80 man ./cshatag.1 > README
+.\"Generate README file for github: make README
 .TH CSHATAG 1 "September 2018" "cshatag 0.1" "User Commands"
 .SH NAME
 
@@ -7,57 +7,91 @@ cshatag \- detect data corruption with checksums in extended attributes.
 .SH SYNOPSIS
 
 .B cshatag
-[\fI\,OPTION\/\fR]... \fI\,<FILE>\/\fR...
+[\fI\,OPTION\/\fR]... <\fI\,FILE\/\fR>...
 
 .SH DESCRIPTION
 
-cshatag is a re-implementation of shatag in C.
+.B cshatag
+is a re\-implementation (in C) of
+.B shatag,
+which helps detect silent data corruption using checksums and extended
+attributes.
 
-cshatag is a tool to detect silent data corruption. It writes the mtime and
-the checksum of a file into the file's extended attributes. The filesystem
-needs to be mounted with user_xattr enabled for this to work. When run again,
-it compares stored mtime and checksum. If it finds that the mtime is unchanged
-but the checksum has changed, it will print a warning message.
+.B cshatag
+writes the last modification time (mtime) and the checksum of a file into the
+file's extended attributes.
+
+When run again,
+.B cshatag
+compares stored mtime and checksum to the file's current mtime and checksum.
+It will print the name of each file processed along with its status.
 
 File statuses are:
+.RS 5
+.TP 12
+.BR "backdated"
+checksum is wrong and mtime is older than the sha tag
+.TP
+.BR "corrupt"
+checksum is wrong and mtime matches the sha tag
+.TP
+.BR "invalid"
+sha tag attributes are corrupt
+.TP
+.BR "new"
+sha tag attributes have not been set
+.TP
+.BR "ok"
+checksum is correct and the mtime matches
+.TP
+.BR "hash ok"
+checksum is correct and the mtime has changed
+.TP
+.BR "outdated"
+checksum is wrong and mtime is newer than the sha tag
 .br
-	backdated   checksum is wrong and mtime is older than the sha tag
-.br
-	corrupt     checksum is wrong and mtime matches the sha tag
-.br
-	invalid     sha tag attributes are corrupt
-.br
-	new         sha tag attributes have not been set
-.br
-	ok          checksum is correct and the mtime matches
-.br
-	hash ok     checksum is correct and the mtime has changed
-.br
-	outdated    checksum is wrong and mtime is newer than the sha tag
-.br
-                 (the file has been updated since the last run)
+(the file has been updated since the last run)
 
-Unless
-.B --dry-run
-is specified, cshatag will automatically store the checksums and timestamps
-timestamps for
+.RE
+.B cshatag
+will automatically store the checksums and timestamps for
 .B new
 files and will update the stored checksums and timestamps for
 .B hash ok
 and
 .B outdated
-files.
+files (unless
+.B \-\^\-dry\-run
+is specified).
 
-cshatag will not automatically update the stored checksums and timestamps for
-.B backdated, corrupt,
+
+.B cshatag
+will not automatically update the stored checksums and timestamps for
+.B backdated,
+.B corrupt,
 or
 .B invalid
 files unless
-.B --force
+.B \-\^\-force
 is specified.
 
-cshatag aims to be format-compatible with shatag and uses the same extended
-attributes (see the COMPATIBILITY section).
+.B cshatag
+aims to be format\-compatible with
+.B shatag
+and uses the same extended attributes (see the
+.B COMPATIBILITY
+section).
+
+.SH NOTES
+Since
+.B cshatag
+operates using extended attributes, any files specified must be stored on a
+filesystem that supports extended user attributes.  Check your filesystem's
+documentation for more information.
+
+For ext2/3/4, you may need to mount the filesystem with the
+.B user\_xattr
+option).
 
 .SH OPTIONS
 .SS "POSITIONAL ARGUMENTS"
@@ -70,8 +104,10 @@ Files to check and hash.
 .BR \-c ", " \-\^\-check
 Check the hashes on all specified files.
 .br
-Without this option, cshatag assumes all files with the same timestamp are OK
-without checking the files' contents.
+Without this option,
+.B cshatag
+assumes all files with the same timestamp are OK without checking their
+contents.
 .TP
 .BR \-f ", " \-\^\-force
 Update the stored hashes for backdated, corrupted, or invalid files.
@@ -79,9 +115,9 @@ Update the stored hashes for backdated, corrupted, or invalid files.
 .BR \-h ", " \-\^\-help
 Output a usage message and exit.
 .TP
-.BR \-n ", " \-\^\-dry-run
-Don't create or update any extended attributes (no on-disk changes).
-This will still read and hash the files as normal.
+.BR \-n ", " \-\^\-dry\-run
+Don't create or update any extended attributes (no on\-disk changes).
+This will still read and hash the specified files.
 .TP
 .BR \-p ", " \-\^\-print
 Print the hashes of all specified files in the sha*sum format.
@@ -89,7 +125,7 @@ Print the hashes of all specified files in the sha*sum format.
 .BR \-q ", " \-\^\-quiet
 Only print errors including checksum failures. Can be specified multiple times
 to print even fewer messages. This is the opposite of
-.B --verbose.
+.B \-\^\-verbose.
 .TP
 .BR \-r ", " \-\^\-recursive
 Process directories and their contents (not just files).
@@ -97,7 +133,7 @@ Process directories and their contents (not just files).
 .BR \-v ", " \-\^\-verbose
 Print more verbose messages error and warnings messages. Can be specified
 multiple times to print even more messages. This is the opposite of
-.B --quiet.
+.B \-\^\-quiet.
 .TP
 .BR \-V ", " \-\^\-version
 Output version information about
@@ -113,13 +149,15 @@ Use the MD5 hash algorithm (not recommended).
 Use the SHA1 hash algorithm (not recommended).
 .TP
 .BR \-\^\-sha256
-Use the SHA256 hash algorithm (default, shatag compatible).
+Use the SHA256 hash algorithm (default,
+.B shatag
+compatible).
 .TP
 .BR \-\^\-sha512
 Use the SHA512 hash algorithm.
 .TP
 .BR \-\^\-blake2
-Use the Blake2b 512-bit hash algorithm (recommended).
+Use the Blake2b 512\-bit hash algorithm (recommended).
 
 .SH EXAMPLES
 
@@ -129,36 +167,36 @@ Create or update the stored hashes for a file:
 
 Verify that a file matches its stored attributes with the blake2 hash algorithm:
 
-.B cshatag -c --blake2 example.txt
+.B cshatag \-c \-\^\-blake2 example.txt
 
-Verify all files in a directory, and filter-out OK file messages:
+Verify all files in a directory, and filter\-out OK file messages:
 
-.B cshatag -cr /example/ | grep -v ': OK$'
+.B cshatag \-cr /example/ | grep \-v ': OK$'
 
 Print a file's stored sha512 hashes:
 
-.B cshatag -p --sha512 example.txt > example.sha512
+.B cshatag \-p \-\^\-sha512 example.txt > example.sha512
 
 This allows you to verify the file's contents with the sha512sum utility
 (e.g. after copying the files to another system without shatag installed):
 
-.B sha512sum -c example.sha512
+.B sha512sum \-c example.sha512
 
 Copy a file to a different system and verify its contents:
 
-.B rsync -tX example.txt user@example.com:example.txt
+.B rsync \-tX example.txt user@example.com:example.txt
 .br
-.B ssh user@example.com cshatag -cn example.txt
+.B ssh user@example.com cshatag \-cn example.txt
 
 Create and update the hashes for all files over 1 MB on the root
 filesystem:
 
-.B find / -xdev -type f -size +1M -print0 | xargs -r0 cshatag > cshatag.log
+.B find / \-xdev \-type f \-size +1M \-print0 | xargs \-r0 cshatag > cshatag.log
 
 To remove the extended attributes from all files:
 
-.B find / -xdev -type f -exec setfattr -x user.shatag.ts {} \\\;
-.B -exec setfattr -x user.shatag.sha256 {} \\\;
+.B find / \-xdev \-type f \-exec setfattr \-x user.shatag.ts {} \\\;
+.B \-exec setfattr \-x user.shatag.sha256 {} \\\;
 
 .SH "EXIT STATUS"
 
@@ -170,12 +208,17 @@ An error occurred or at least 1 file is backdated, corrupt, or invalid
 
 .SH COMPATIBILITY
 
-cshatag writes the user.shatag.ts field with full nanosecond precision, while
-the original shatag utility (in python) uses a double for the whole mtime and
-loses ~200 ns of resolution. To deal with this, cshatag treats timestamps
-within 1 \[mc]s as equal.
+.B cshatag
+writes the user.shatag.ts field with full nanosecond precision, while python
+uses a floating point number for the whole mtime.  As a result, the original
+.B shatag
+utility is only accurate to within about 200 ns. Because of this,
+.B cshatag
+treats timestamps within 1 \[mc]s as equal.
 
-The original shatag utility also only supports the sha256 hash algorithm.
+The original
+.B shatag
+utility also only supports the sha256 hash algorithm.
 
 .SH AUTHOR
 Written by Jakob Unterwurzacher, and Tim Schlueter.
@@ -194,10 +237,16 @@ There is NO WARRANTY, to the extent permitted by law.
 .SH "SEE ALSO"
 shatag(1), sha256sum(1), getfattr(1), setfattr(1)
 
-The current version is available via http:
-.br
-.B https://github.com/modelrockettier/cshatag
-
-The original shatag utility, written in python by Maxime Augier:
+The original
+.B shatag
+utility, written in python by Maxime Augier:
 .br
 .B https://bitbucket.org/maugier/shatag
+
+.SH "AVAILABILITY"
+
+You can obtain the latest version of
+.B cshatag
+from:
+.br
+.B https://github.com/modelrockettier/cshatag
