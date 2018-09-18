@@ -1,0 +1,13 @@
+Source: cshatag
+Maintainer: Tim Schlueter <schlueter.tim@linux.com>
+Section: utils
+Priority: optional
+Standards-Version: 3.9.2
+Build-Depends: attr, debhelper (>= 10), devscripts, libssl-dev, xxd
+
+Package: cshatag
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Recommends: man-db
+Description: shatag in C
+ Detect silent data corruption under Linux using checksums in extended attributes.

@@ -17,7 +17,7 @@ OBJECTS = cshatag.o file.o hash.o utilities.o xa.o
 
 VERSION ?= $(shell git describe --dirty=+ 2>/dev/null || echo 0.1-nogit)
 
-.PHONY: all clean debug install test
+.PHONY: all clean debug deb install test
 
 # Secondary expansion allows using $@ and co in the dependencies
 .SECONDEXPANSION:
@@ -48,6 +48,9 @@ endif
 # Rebuild the 'version' output any time the version string changes
 utilities.o utilities.d: CFLAGS += -DVERSION_STRING='"$(VERSION)"'
 utilities.o utilities.d: .version
+
+deb:
+	debuild --no-sign --no-pre-clean --build=binary --diff-ignore --tar-ignore
 
 README: cshatag.1
 	MANWIDTH=80 man --nh --nj -l $< > $@
