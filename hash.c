@@ -127,6 +127,7 @@ int fhash(int fd, char *hashbuf, int hashlen, const char *alg)
 	alg_len = EVP_MD_CTX_size(c);
 
 	assert(alg_len > 0);
+	assert(alg_len <= MAX_HASH_LEN);
 
 	if ((alg_len * 2) >= hashlen) {
 		pr_err("Hash exceeds buffer size: %d > %d\n", alg_len * 2 + 1, hashlen);
@@ -170,7 +171,7 @@ out:
  * @param alg  The algorithm to use.
  *
  * @returns Returns the hash size of the @p alg hash algorithm.
- * @returns Returns a negative number if an error occurs.
+ * @returns Returns 0 if an error occurs.
  */
 int get_alg_size(const char *alg)
 {
@@ -183,15 +184,15 @@ int get_alg_size(const char *alg)
 
 	if (a == NULL) {
 		pr_err("Failed to find hash algorithm \"%s\"\n", alg);
-		return -1;
+		return 0;
 	}
 
 	len = EVP_MD_size(a);
 
-	assert(len <= EVP_MAX_MD_SIZE);
-
-	if (len < 0)
+	if (len <= 0 || len > EVP_MAX_MD_SIZE) {
 		pr_err("Invalid algorithm size for \"%s\": %d\n", alg, len);
+		len = 0;
+	}
 
 	return len;
 }

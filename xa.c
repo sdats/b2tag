@@ -38,7 +38,6 @@
 #include <ctype.h>
 #include <errno.h>
 #include <string.h>
-#include <sys/xattr.h>
 
 #include "utilities.h"
 
@@ -46,6 +45,7 @@
  * Clear the timestamp and hash values in @p xa.
  *
  * @li @p xa->alg will be left untouched.
+ * @li @p xa->valid will be set to false.
  * @li @p xa->mtime will be zeroed.
  * @li @p xa->hash will be set to a string of ASCII '0's the same length as @p xa->alg.
  *
@@ -59,8 +59,15 @@ void xa_clear(xa_t *xa)
 	assert(xa != NULL);
 
 	if ((void *)empty.alg != (void *)xa->alg) {
+		int tmp = errno;
+
 		empty.alg = xa->alg;
+		empty.valid = false;
+
 		snprintf(empty.hash, sizeof(empty.hash), "%0*d", get_alg_size(empty.alg) * 2, 0);
+
+		/* Restore errno after the snprintf() call. */
+		errno = tmp;
 	}
 
 	*xa = empty;
@@ -102,6 +109,7 @@ int xa_compute(int fd, xa_t *xa)
  * @retval -1  An error occurred reading the extended attributes.
  * @retval  0  The extended attributes were successfully read.
  * @retval  1  The file does not have the shatag extended attributes.
+ * @retval  2  The shatag extended attributes are corrupted.
  */
 int xa_read(int fd, xa_t *xa)
 {
@@ -118,8 +126,16 @@ int xa_read(int fd, xa_t *xa)
 
 	/* Read timestamp xattr. */
 	len = fgetxattr(fd, "user.shatag.ts", buf, sizeof(buf) - 1);
-	if (len < 0)
-		return (errno == ENODATA) ? 1 : -1;
+	if (len < 0) {
+		if (errno == ENOATTR)
+			return 1;
+
+		if (errno == ENOTSUP)
+			pr_err("Filesystem does not support extended attributes\n");
+		else
+			pr_err("Failed to retrieve user.shatag.ts: %m\n");
+		return -1;
+	}
 
 	buf[len] = '\0';
 
@@ -127,17 +143,17 @@ int xa_read(int fd, xa_t *xa)
 	if (err < 1) {
 		pr_err("Malformed timestamp: %m\n");
 		xa_clear(xa);
-		return -1;
+		return 2;
 	}
 
-	end -= start;
-	while (end++ < 9)
+	/* TODO: fuzzy time */
+	for (end -= start; end < 9; end++)
 		xa->mtime.tv_nsec *= 10;
 
-	if (xa->mtime.tv_nsec >= 1000000000) {
+	if (xa->mtime.tv_nsec >= 1000000000 || end >= 10) {
 		pr_err("Invalid timestamp (ns too large): %s\n", buf);
 		xa_clear(xa);
-		return -1;
+		return 2;
 	}
 
 	/* Read hash xattr. */
@@ -145,7 +161,11 @@ int xa_read(int fd, xa_t *xa)
 	len = fgetxattr(fd, buf, xa->hash, sizeof(xa->hash) - 1);
 	if (len < 0) {
 		xa_clear(xa);
-		return (errno == ENODATA) ? 1 : -1;
+		if (errno == ENOATTR)
+			return 1;
+
+		pr_err("Failed to retrieve %s: %m\n", buf);
+		return -1;
 	}
 
 	xa->hash[len] = '\0';
@@ -153,7 +173,7 @@ int xa_read(int fd, xa_t *xa)
 	if (len != (ssize_t)get_alg_size(xa->alg) * 2) {
 		pr_err("Stored hash size mismatch: %zd != %d\n", len, get_alg_size(xa->alg) * 2);
 		xa_clear(xa);
-		return -1;
+		return 2;
 	}
 
 	/* Make sure the hash is all lowercase hex chars. */
@@ -168,7 +188,7 @@ int xa_read(int fd, xa_t *xa)
 				pr_debug("Found 0x%02x character.\n", (unsigned)c);
 
 			xa_clear(xa);
-			return -1;
+			return 2;
 		}
 
 		/* Convert to lowercase if necessary. */

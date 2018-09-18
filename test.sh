@@ -270,7 +270,7 @@ for ALG in '' md5 sha1 sha256 sha512 blake2; do
 	check_hash "$TEST_FILE" "$HASH" $ALG || let RET++
 
 	# Print test
-	echo "Test print file hashes ($ALG_NAME)"
+	echo "Test verify hashes with <hash>sum ($ALG_NAME)"
 	./cshatag -p $args --$ALG "$TEST_FILE" | hash "$ALG" -c - >/dev/null \
 		|| fail "cshatag returned failure: $?" \
 		|| let RET++

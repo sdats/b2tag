@@ -36,8 +36,13 @@
 #define XA_H
 
 #include <stdbool.h>
+#include <sys/xattr.h>
 
 #include "hash.h"
+
+#ifndef ENOATTR
+#define ENOATTR ENODATA
+#endif
 
 /**
  * Metadata structure for cshatag.
