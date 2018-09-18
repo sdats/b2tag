@@ -7,7 +7,7 @@ SYNOPSIS
        cshatag [OPTION]... <FILE>...
 
 DESCRIPTION
-       cshatag is a re-implementation (in C) of shatag, which helps detect
+       cshatag is a re-implementation (in C) of shatag(1), which helps detect
        silent data corruption using checksums and extended attributes.
 
        cshatag writes the last modification time (mtime) and the checksum of a
@@ -38,9 +38,8 @@ DESCRIPTION
        files and will update the stored checksums and timestamps for hash ok
        and outdated files (unless --dry-run is specified).
 
-       cshatag will not automatically update the stored checksums and
-       timestamps for backdated, corrupt, or invalid files unless --force is
-       specified.
+       cshatag will not update the stored checksums and timestamps for
+       backdated, corrupt, or invalid files unless --force is specified.
 
        cshatag aims to be format-compatible with shatag and uses the same
        extended attributes (see the COMPATIBILITY section).

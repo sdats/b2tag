@@ -3,10 +3,10 @@ MKDIR   ?= mkdir
 
 PREFIX ?= /usr/local
 
-# Remove a trailing slash (if present)
+# Remove trailing slash (if present)
 override PREFIX  := $(PREFIX:/=)
-# Append a trailing slash (if not already present)
-override DESTDIR := $(addsuffix /,$(DESTDIR:/=))
+# Remove trailing slash (if present)
+override DESTDIR := $(DESTDIR:/=)
 
 CFLAGS += -Wall -Wextra -Werror -O2 -D_GNU_SOURCE -DNDEBUG
 CFLAGS += $(EXTRA_CFLAGS)
@@ -55,6 +55,9 @@ README: cshatag.1
 test: cshatag
 	./test.sh
 
+%.gz: %
+	gzip -ck $<  > $@
+
 # Don't delete any created directories
 .PRECIOUS: $(DESTDIR)$(PREFIX)/%/
 $(DESTDIR)$(PREFIX)/%/:
@@ -66,7 +69,7 @@ $(DESTDIR)$(PREFIX)/bin/%: $$(@F) | $$(@D)/
 $(DESTDIR)$(PREFIX)/%: $$(@F) | $$(@D)/
 	$(INSTALL) -m0644 $< $@
 
-install: $(DESTDIR)$(PREFIX)/bin/cshatag $(DESTDIR)$(PREFIX)/share/man/man1/cshatag.1
+install: $(DESTDIR)$(PREFIX)/bin/cshatag $(DESTDIR)$(PREFIX)/share/man/man1/cshatag.1.gz
 
 clean:
 	$(RM) cshatag .version $(OBJECTS) $(OBJECTS:.o=.d)

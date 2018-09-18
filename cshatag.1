@@ -13,7 +13,7 @@ cshatag - detect data corruption with checksums in extended attributes.
 .P
 .B cshatag
 is a re-implementation (in C) of
-.B shatag,
+.B shatag(1),
 which helps detect silent data corruption using checksums and extended
 attributes.
 .P
@@ -65,7 +65,9 @@ files (unless
 is specified).
 .P
 .B cshatag
-will not automatically update the stored checksums and timestamps for
+will
+.I not
+update the stored checksums and timestamps for
 .B backdated,
 .B corrupt,
 or
@@ -249,10 +251,10 @@ The original
 .B shatag
 utility, written in python by Maxime Augier:
 .br
-.B https://bitbucket.org/maugier/shatag
+https://bitbucket.org/maugier/shatag
 .P
 .SH AVAILABILITY
 .P
 Up-to-date sources can be found at:
 .br
-.B https://github.com/modelrockettier/cshatag
+https://github.com/modelrockettier/cshatag
