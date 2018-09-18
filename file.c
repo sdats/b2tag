@@ -43,6 +43,8 @@
 #include "utilities.h"
 #include "xa.h"
 
+#define FADVISE_THRESHOLD 65536
+
 /**
  * An array holding the inode and dev numbers for a directory.
  */
@@ -252,6 +254,16 @@ static int check_file(int fd, const char *filename, struct stat *st)
 	assert(S_ISREG(st->st_mode));
 
 	pr_debug("Processing file: %s\n", filename);
+
+	/* If the file is large (enough), tell the kernel we'll be accessing it
+	 * sequentially.
+	 */
+	if (st->st_size > FADVISE_THRESHOLD) {
+		err = posix_fadvise(fd, 0, 0, POSIX_FADV_SEQUENTIAL);
+		/* Ignore if fadvise fails for some reason (just print a warning). */
+		if (err != 0)
+			pr_warn("Warning: fadvise failed: %m\n");
+	}
 
 	a = s = (xa_t){ .alg = args.alg };
 
