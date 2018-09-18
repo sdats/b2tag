@@ -189,6 +189,9 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
+	if (args.dry_run && args.force)
+		pr_warn("Warning: --dry-run takes precedence over --force.\n");
+
 	while (argc >= 1) {
 		int err;
 		char *pos = argv[0] + strlen(argv[0]) - 1;

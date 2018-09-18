@@ -195,14 +195,17 @@ static enum file_state get_file_state(int fd, xa_t *stored, xa_t *actual)
 	}
 
 	err = xa_read(fd, stored);
-	if (err < 0) {
-		xa_compute(fd, actual);
-		return FILE_INVALID;
-	}
+	if (err < 0)
+		return FILE_FAULT;
 
-	if (err > 0) {
+	if (err == 1) {
 		xa_compute(fd, actual);
 		return FILE_NEW;
+	}
+
+	if (err >= 2) {
+		xa_compute(fd, actual);
+		return FILE_INVALID;
 	}
 
 	comparison = ts_compare(stored->mtime, actual->mtime);
@@ -270,10 +273,8 @@ static int check_file(int fd, const char *filename, struct stat *st)
 	a.mtime = st->st_mtim;
 
 	state = get_file_state(fd, &s, &a);
-	if (state == FILE_FAULT) {
-		pr_err("Error: failed to get file state \"%s\": %m\n", filename);
-		return 2;
-	}
+	if (state == FILE_FAULT)
+		return -1;
 
 	/* Whether to print the file status or the sha*sum data. */
 	if (args.print)
