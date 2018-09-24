@@ -88,7 +88,7 @@ static void usage(const char *program)
 		"  -V, --version         output version information and exit\n"
 		"\n"
 		"Hash algorithms:\n"
-		"  --blake2b (default, 512-bit)  --blake2s (256-bit)\n"
+		"  --blake2b (default, 512-bit)  --blake2s (256-bit, recommended on 32-bit)\n"
 		"  --sha512                      --sha256 (shatag compatible)\n"
 		"  --sha1 (deprecated)           --md5 (deprecated)\n",
 		program);

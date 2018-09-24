@@ -145,24 +145,30 @@ and exit.
 .P
 .TP
 .BR --blake2b
-Use the Blake2b 512-bit hash algorithm (default).
+Use the Blake2b 512-bit hash algorithm (default). On 64-bit machines, blake2b
+is usually the fastest.
 .TP
 .BR --blake2s
-Use the Blake2s 256-bit hash algorithm (recommended for 32-bit systems).
+Use the Blake2s 256-bit hash algorithm. On 32-bit machines, blake2s is usually
+the fastest.
 .TP
 .BR --sha512
-Use the SHA512 hash algorithm.
+Use the SHA-512 hash algorithm. On 64-bit machines, sha-512 is usually much
+faster than sha256.
 .TP
 .BR --sha256
-Use the SHA256 hash algorithm
-.B (shatag
-compatible).
+Use the SHA-256 hash algorithm. SHA-256 is the only hash algorithm supported by
+the original
+.B shatag
+utility. It is usually the slowest hash algorithm on 64-bit machines.
 .TP
 .BR --sha1
-Use the SHA1 hash algorithm (not recommended).
+Use the SHA-1 hash algorithm.
+.B SHA-1 is not secure and is not recommended.
 .TP
 .BR --md5
-Use the MD5 hash algorithm (not recommended).
+Use the MD5 hash algorithm.
+.B MD5 is not secure and is not recommended.
 .P
 .SH EXAMPLES
 .P
@@ -183,11 +189,11 @@ Print a file's stored sha512 hashes:
 .B b2tag -p --sha512 example.txt > example.sha512
 .P
 This allows you to verify the file's contents with the sha512sum utility
-(e.g. after copying the files to another system without shatag installed):
+(e.g. after copying the files to another machine without shatag installed):
 .P
 .B sha512sum -c example.sha512
 .P
-Copy a file to a different system and verify its contents:
+Copy a file to a different machine and verify its contents:
 .P
 .B rsync -tX example.txt user@example.com:example.txt
 .br

@@ -94,21 +94,27 @@ OPTIONS
 
    Hash Algorithms
        --blake2b
-              Use the Blake2b 512-bit hash algorithm (default).
+              Use the Blake2b 512-bit hash algorithm (default). On 64-bit
+              machines, blake2b is usually the fastest.
 
        --blake2s
-              Use the Blake2s 256-bit hash algorithm (recommended for 32-bit
-              systems).
+              Use the Blake2s 256-bit hash algorithm. On 32-bit machines,
+              blake2s is usually the fastest.
 
        --sha512
-              Use the SHA512 hash algorithm.
+              Use the SHA-512 hash algorithm. On 64-bit machines, sha-512 is
+              usually much faster than sha256.
 
        --sha256
-              Use the SHA256 hash algorithm (shatag compatible).
+              Use the SHA-256 hash algorithm. SHA-256 is the only hash
+              algorithm supported by the original shatag utility. It is
+              usually the slowest hash algorithm on 64-bit machines.
 
-       --sha1 Use the SHA1 hash algorithm (not recommended).
+       --sha1 Use the SHA-1 hash algorithm.  SHA-1 is not secure and is not
+              recommended.
 
-       --md5  Use the MD5 hash algorithm (not recommended).
+       --md5  Use the MD5 hash algorithm.  MD5 is not secure and is not
+              recommended.
 
 EXAMPLES
        Create or update the stored hashes for a file:
@@ -129,12 +135,12 @@ EXAMPLES
        b2tag -p --sha512 example.txt > example.sha512
 
        This allows you to verify the file's contents with the sha512sum
-       utility (e.g. after copying the files to another system without shatag
+       utility (e.g. after copying the files to another machine without shatag
        installed):
 
        sha512sum -c example.sha512
 
-       Copy a file to a different system and verify its contents:
+       Copy a file to a different machine and verify its contents:
 
        rsync -tX example.txt user@example.com:example.txt
        ssh user@example.com b2tag -cn example.txt
