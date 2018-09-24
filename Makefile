@@ -3,6 +3,7 @@ INSTALL ?= install
 MKDIR   ?= mkdir
 
 PREFIX ?= /usr/local
+VERSION_FALLBACK ?= 0.2-nogit
 
 NAME = b2tag
 
@@ -18,7 +19,7 @@ LDLIBS += $(EXTRA_LDLIBS)
 
 OBJECTS = b2tag.o file.o hash.o utilities.o xa.o
 
-VERSION ?= $(shell git describe --dirty=+ 2>/dev/null || echo 0.1-nogit)
+VERSION ?= $(shell git describe --dirty=+ 2>/dev/null || echo $(VERSION_FALLBACK))
 
 .PHONY: all clean debug deb doxygen install test
 
