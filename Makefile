@@ -1,3 +1,4 @@
+DOXYGEN ?= doxygen
 INSTALL ?= install
 MKDIR   ?= mkdir
 
@@ -19,7 +20,7 @@ OBJECTS = b2tag.o file.o hash.o utilities.o xa.o
 
 VERSION ?= $(shell git describe --dirty=+ 2>/dev/null || echo 0.1-nogit)
 
-.PHONY: all clean debug deb install test
+.PHONY: all clean debug deb doxygen install test
 
 # Secondary expansion allows using $@ and co in the dependencies
 .SECONDEXPANSION:
@@ -33,11 +34,9 @@ $(NAME): $(OBJECTS) | $(OBJECTS:.o=.d)
 
 MAKECMDGOALS ?= all
 
-# Don't build the .d files if we're cleaning or just building the README
-ifeq ($(filter %.o %.d clean,$(MAKECMDGOALS)),)
-ifneq ($(MAKECMDGOALS),README)
+# Don't include the .d files when just cleaning
+ifeq (clean,$(MAKECMDGOALS))
 include $(wildcard *.d)
-endif
 endif
 
 %.o %.d: %.c
@@ -53,6 +52,9 @@ endif
 # Rebuild the 'version' output any time the version string changes
 utilities.o utilities.d: CFLAGS += -DVERSION_STRING='"$(VERSION)"'
 utilities.o utilities.d: .version
+
+doxygen:
+	$(DOXYGEN)
 
 # --unsigned-source and --unsigned-changes don't work (have to use -us and -uc)
 deb:
