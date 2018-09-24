@@ -51,6 +51,8 @@ typedef struct xa_s
 {
 	/** Whether the xattr struct contains a valid hash. */
 	bool valid;
+	/** Whether the mtime is inaccurate, see COMPATIBILITY in b2tag(1). */
+	bool fuzzy;
 	/** The file's last modified time. */
 	struct timespec mtime;
 	/** The hash algorithm to use. */

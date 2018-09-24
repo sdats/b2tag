@@ -208,7 +208,7 @@ static enum file_state get_file_state(int fd, xa_t *stored, xa_t *actual)
 		return FILE_INVALID;
 	}
 
-	comparison = ts_compare(stored->mtime, actual->mtime);
+	comparison = ts_compare(stored->mtime, actual->mtime, stored->fuzzy);
 
 	/* Quick check. If stored timestamps match, skip hashing. */
 	if (comparison == 0 && !args.check)

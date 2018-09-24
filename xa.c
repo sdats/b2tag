@@ -147,9 +147,13 @@ int xa_read(int fd, xa_t *xa)
 		return 2;
 	}
 
-	/* TODO: fuzzy time */
-	for (end -= start; end < 9; end++)
-		xa->mtime.tv_nsec *= 10;
+	end -= start;
+	if (end < 9) {
+		xa->fuzzy = true;
+
+		for (; end < 9; end++)
+			xa->mtime.tv_nsec *= 10;
+	}
 
 	if (xa->mtime.tv_nsec >= 1000000000 || end >= 10) {
 		pr_err("Invalid timestamp (ns too large): %s\n", buf);

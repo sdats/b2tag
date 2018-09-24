@@ -160,8 +160,9 @@ COMPATIBILITY
        Additionally, b2tag writes the user.shatag.ts field with full
        nanosecond precision, while python uses a floating point number for the
        whole mtime. As a result, the original shatag utility is only accurate
-       to within about 200 ns. Because of this, b2tag treats timestamps within
-       1 µs as equal.
+       to within about 200 ns. Because of this, b2tag treats small timestamps
+       (fewer than 9 fractional digits) within 1 µs as equal. Timestamps with
+       full nanosecond precision are compared normally.
 
 AUTHOR
        Written by Jakob Unterwurzacher, and Tim Schlueter.

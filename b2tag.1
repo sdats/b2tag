@@ -224,7 +224,8 @@ uses a floating point number for the whole mtime. As a result, the original
 .B shatag
 utility is only accurate to within about 200 ns. Because of this,
 .B b2tag
-treats timestamps within 1 \[mc]s as equal.
+treats small timestamps (fewer than 9 fractional digits) within 1 \[mc]s as
+equal. Timestamps with full nanosecond precision are compared normally.
 .P
 .SH AUTHOR
 .P
