@@ -78,7 +78,7 @@ $(DESTDIR)$(PREFIX)/bin/%: $$(@F) | $$(@D)/
 $(DESTDIR)$(PREFIX)/%: $$(@F) | $$(@D)/
 	$(INSTALL) -m0644 $< $@
 
-install: $(DESTDIR)$(PREFIX)/bin/$(NAME) $(DESTDIR)$(PREFIX)/share/man/man1/$(NAME).1.gz
+install: $(addprefix $(DESTDIR)$(PREFIX)/, bin/$(NAME) bin/cshatag share/man/man1/$(NAME).1.gz)
 
 clean:
 	$(RM) $(NAME) .version $(OBJECTS) $(OBJECTS:.o=.d)
