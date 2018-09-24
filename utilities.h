@@ -60,11 +60,7 @@ int ts_compare(struct timespec ts1, struct timespec ts2, bool fuzzy);
  */
 void die(const char *fmt, ...) __attribute__((noreturn, format(printf, 1, 2)));
 
-/**
- * Prints version information for b2tag.
- */
-void version(void);
-
+/** Returns the number of elements in a statically allocated array. */
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
 #define _check_level(level) (args.verbose >= (level))

@@ -50,8 +50,8 @@ endif
 	echo '$(VERSION)' > $@
 
 # Rebuild the 'version' output any time the version string changes
-utilities.o utilities.d: CFLAGS += -DVERSION_STRING='"$(VERSION)"'
-utilities.o utilities.d: .version
+b2tag.o b2tag.d: CFLAGS += -DVERSION_STRING='"$(VERSION)"'
+b2tag.o b2tag.d: .version
 
 doxygen:
 	$(DOXYGEN)

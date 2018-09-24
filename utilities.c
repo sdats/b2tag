@@ -43,8 +43,6 @@
  * @param ts2    Timespec structure to compare.
  * @param fuzzy  If true, consider timestamps within 1us equal.
  *
- * @note This function considers two timespecs within 1 microsecond to be equal.
- *
  * @retval <0 @p ts1 is earlier than @p ts2.
  * @retval 0 @p ts1 and @p ts2 are equal.
  * @retval >0 @p ts1 is later than @p ts2.
@@ -91,12 +89,4 @@ void die(const char *fmt, ...)
 	va_end(ap);
 
 	exit(EXIT_FAILURE);
-}
-
-/**
- * Prints version information for b2tag.
- */
-void version(void)
-{
-	printf("b2tag version %s\n", VERSION_STRING);
 }

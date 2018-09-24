@@ -53,6 +53,14 @@
 struct args_s args;
 
 /**
+ * Prints version information for b2tag.
+ */
+static void version(void)
+{
+	printf("b2tag version %s\n", VERSION_STRING);
+}
+
+/**
  * Prints a usage message for b2tag.
  *
  * @param program  The name of the program being run.
