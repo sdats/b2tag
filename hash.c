@@ -43,13 +43,18 @@
 /** The size of the file read buffer. */
 #define BUFSZ 65536
 
+/** The function signature of the OpenSSL EVP algorithms. */
 typedef const EVP_MD *(*evp_func)(void);
 
+/** Structure containing info about a hash algorithm. */
 struct alg_data {
+	/** The name of the algorithm (lowercase). */
 	const char *name;
+	/** The OpenSSL EVP function of the algorithm. */
 	evp_func md;
 };
 
+/** Data about all the hash algorithms b2tag supports. */
 static struct alg_data hash_alg_data[] = {
 	[HASH_ALG_MD5]     = {
 		.name = "md5",

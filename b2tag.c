@@ -54,6 +54,8 @@ struct args_s args;
 
 /**
  * Prints version information for b2tag.
+ *
+ * @note VERSION_STRING is generated in the Makefile and defined on the compiler command-line.
  */
 static void version(void)
 {

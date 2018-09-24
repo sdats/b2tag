@@ -43,6 +43,7 @@
 #include "utilities.h"
 #include "xa.h"
 
+/** Call the kernel's fadvise() on files larger than this. */
 #define FADVISE_THRESHOLD 65536
 
 /**
@@ -63,7 +64,7 @@ struct parent_dirs {
 	size_t allocated;    /**< The number of elements allocated in the array. */
 };
 
-/** A file's current state (e.g. outdated). */
+/** A file's current state (e.g outdated). */
 enum file_state {
 	FILE_FAULT,     /**< An error occurred reading file. */
 	FILE_OK,        /**< File hash and mtime matches. */
@@ -75,7 +76,7 @@ enum file_state {
 	FILE_INVALID,   /**< Xattrs corrupted. */
 };
 
-/** The string representation of the file_state enum values. */
+/** The string representation of the ::file_state enum values. */
 static char const * const file_state_str[] = {
 	"FAULT",
 	"OK",
@@ -134,7 +135,7 @@ static void print_state(enum file_state state, const char *filename, xa_t *store
 }
 
 /**
- * Prints information about a file in the sha*sum format.
+ * Prints information about a file in the coreutils sha*sum format.
  *
  * @param state     The file's state (e.g. ok).
  * @param filename  The name of the file.
@@ -165,8 +166,8 @@ static void print_sum(enum file_state state __attribute__((unused)),
  *       file's state (but may not be so check the xa_t::valid field).
  *       Also, @p actual->mtime will not be changed if non-zero.
  *
- * @param[in]  fd         The file to get the state of.
- * @param[out] stored     The xa structure to hold the file's stored attributes.
+ * @param[in]     fd      The file to get the state of.
+ * @param[out]    stored  The xa structure to hold the file's stored attributes.
  * @param[in,out] actual  The xa structure to hold the file's current hash+mtime.
  *
  * @returns Returns the file's state.
@@ -324,7 +325,9 @@ static int check_file(int fd, const char *filename, struct stat *st)
  * If @p filename is a directory and --recursive was set on the command-line,
  * this will pass it on to check_dir().
  *
- * @param filename  The path to check.
+ * @param fd        A readable open file descriptor to the directory to check.
+ * @param filename  The path of the directory to check.
+ * @param st        The stat() structure of the directory to check.
  * @param parents   The parent directories' inodes (to check for loops).
  *
  * @retval 0  The file was processed successfully.

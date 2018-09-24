@@ -39,13 +39,47 @@
 /** The largest possible hash size. */
 #define MAX_HASH_SIZE EVP_MAX_MD_SIZE
 
+/** The supported hash algorithms. */
 typedef enum hash_alg {
-	HASH_ALG_MD5,
-	HASH_ALG_SHA1,
-	HASH_ALG_SHA256,
-	HASH_ALG_SHA512,
+	/**
+	 * The Blake2b hash algorithm (512-bit).
+	 *
+	 * Blake2b is usually the fastest algorithm on 64-bit machines.
+	 */
 	HASH_ALG_BLAKE2B,
+	/**
+	 * The Blake2s hash algorithm (256-bit).
+	 *
+	 * Blake2s is usually the fastest algorithm on 32-bit machines.
+	 */
 	HASH_ALG_BLAKE2S,
+	/**
+	 * The SHA-512 hash algorithm (512-bit).
+	 *
+	 * SHA-512 is faster than SHA-256 on 64-bit machines, but slower than Blake2.
+	 */
+	HASH_ALG_SHA512,
+	/**
+	 * The SHA-256 hash algorithm (256-bit).
+	 *
+	 * SHA-256 is usually the slowest algorithm on 64-bit machines.
+	 *
+	 * @note SHA-256 is the only hash algorithm supported by the original shatag utility.
+	 */
+	HASH_ALG_SHA256,
+	/**
+	 * The SHA-1 hash algorithm (160-bit).
+	 *
+	 * @warning SHA-1 is not secure and is not recommended.
+	 */
+	HASH_ALG_SHA1,
+	/**
+	 * The MD5 hash algorithm (128-bit).
+	 *
+	 * @warning MD5 is not secure and is not recommended.
+	 */
+	HASH_ALG_MD5,
+
 } hash_alg_t;
 
 /**

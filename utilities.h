@@ -63,22 +63,38 @@ void die(const char *fmt, ...) __attribute__((noreturn, format(printf, 1, 2)));
 /** Returns the number of elements in a statically allocated array. */
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
+/**
+ * @internal
+ * Helper macro to tell if the program's verbosity is higher than @p level.
+ */
 #define _check_level(level) (args.verbose >= (level))
 
+/** Returns whether critical error messages should be printed. */
 #define check_crit()  _check_level(-1)
+/** Returns whether error messages should be printed. */
 #define check_err()   _check_level(0)
+/** Returns whether warning messages should be printed. */
 #define check_warn()  _check_level(1)
+/** Returns whether debug messages should be printed. */
 #define check_debug() _check_level(2)
 
+/**
+ * @internal
+ * Helper macro to print a message if the program's verbosity is higher than @p level.
+ */
 #define _print(level, ...) \
 	do { \
 		if (check_##level()) \
 			fprintf(stderr, __VA_ARGS__); \
 	} while (0)
 
+/** Print a critical error message. */
 #define pr_crit(...)  _print(crit,  __VA_ARGS__)
+/** Print an error message. */
 #define pr_err(...)   _print(err,   __VA_ARGS__)
+/** Print a warning message. */
 #define pr_warn(...)  _print(warn,  __VA_ARGS__)
+/** Print a debug message. */
 #define pr_debug(...) _print(debug, __VA_ARGS__)
 
 #endif /* UTILITIES_H */
