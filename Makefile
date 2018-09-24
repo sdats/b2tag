@@ -54,8 +54,9 @@ endif
 utilities.o utilities.d: CFLAGS += -DVERSION_STRING='"$(VERSION)"'
 utilities.o utilities.d: .version
 
+# --unsigned-source and --unsigned-changes don't work (have to use -us and -uc)
 deb:
-	debuild --no-sign --no-pre-clean --build=binary --diff-ignore --tar-ignore
+	debuild --no-pre-clean --build=binary --diff-ignore --tar-ignore --no-sign -us -uc
 
 README: $(NAME).1
 	MANWIDTH=80 man --nh --nj -l $< > $@

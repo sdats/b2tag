@@ -7,3 +7,6 @@ PREFIX := /usr
 
 override_dh_auto_install:
 	dh_auto_install -- "PREFIX=$(PREFIX)"
+
+override_dh_auto_test:
+	dh_auto_test -- Q=1

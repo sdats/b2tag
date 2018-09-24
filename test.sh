@@ -40,8 +40,14 @@ TEST_MESSAGE=${TEST_MESSAGE:-The quick brown fox jumped over the lazy dog.}
 DEFAULT_ALG=blake2b
 
 function fail() {
-	echo "$*" >&2
+	warn "$@"
 	return 1
+}
+
+function info() {
+	if [[ -z $Q || $Q = 0 ]]; then
+		echo "$*"
+	fi
 }
 
 function to_hex() {
@@ -302,7 +308,7 @@ else
 fi
 
 if [[ -e $TEST_FILE ]]; then
-	echo "Warning: test.txt already exists. Removing." >&2
+	fail "Warning: test.txt already exists. Removing."
 	rm "$TEST_FILE" \
 		|| fail "Could not remove old test file" \
 		|| let RET++
@@ -329,12 +335,12 @@ for ALG in '' blake2b blake2s md5 sha1 sha256 sha512; do
 	ALG_NAME="${ALG:-default}"
 
 	# Make sure the newly-created test file doesn't have the shatag xattrs
-	echo "Test sanity ($ALG_NAME)"
+	info "Test sanity ($ALG_NAME)"
 	check_ts   "$TEST_FILE" "" || let RET++
 	check_hash "$TEST_FILE" "" $ALG || let RET++
 
 	# Make sure b2tag doesn't add xattrs when -n is given
-	echo "Test dry-run ($ALG_NAME)"
+	info "Test dry-run ($ALG_NAME)"
 	./b2tag -n $args --$ALG "$TEST_FILE" \
 		|| fail "b2tag returned failure: $?" \
 		|| let RET++
@@ -343,7 +349,7 @@ for ALG in '' blake2b blake2s md5 sha1 sha256 sha512; do
 	check_hash "$TEST_FILE" "" $ALG || let RET++
 
 	# Make sure b2tag adds the proper xattrs
-	echo "Test new file ($ALG_NAME)"
+	info "Test new file ($ALG_NAME)"
 	./b2tag $args --$ALG "$TEST_FILE" \
 		|| fail "b2tag returned failure: $?" \
 		|| let RET++
@@ -352,7 +358,7 @@ for ALG in '' blake2b blake2s md5 sha1 sha256 sha512; do
 	check_hash "$TEST_FILE" "$HASH" $ALG || let RET++
 
 	# Print test
-	echo "Test verify hashes with <hash>sum ($ALG_NAME)"
+	info "Test verify hashes with <hash>sum ($ALG_NAME)"
 	./b2tag -p $args --$ALG "$TEST_FILE" | hash "$ALG" -c - >/dev/null \
 		|| fail "hash verification failed: ${PIPESTATUS[*]}" \
 		|| let RET++
@@ -368,7 +374,7 @@ if [[ $RET -eq 0 ]]; then
 	echo "All tests successful"
 	rm -f "$TEST_FILE"
 else
-	echo "$RET test failures"
+	fail "$RET test failures"
 fi
 
 exit $RET
