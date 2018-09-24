@@ -65,8 +65,9 @@ typedef struct xa_s
  * Clear the timestamp and hash values in @p xa.
  *
  * @li @p xa->alg will be left untouched.
- * @li @p xa->mtime will be zeroed.
- * @li @p xa->hash will be set to a string of ASCII '0's the same length as @p xa->alg.
+ * @li @p xa->hash will be set to a string of ASCII '0's the same length as @p xa->alg
+ *     (and NUL-terminated).
+ * @li The rest of @p xa will be zeroed.
  *
  * @param xa  The extended attribute structure to clear.
  */
@@ -92,8 +93,10 @@ int xa_compute(int fd, xa_t *xa);
  * @param fd  The file to retrieve the extended attributes from.
  * @param xa  The extended attribute structure to store the values in.
  *
- * @retval 0  The extended attributes were successfully read.
- * @retval !0 An error occurred reading the extended attributes.
+ * @retval -1  An error occurred reading the extended attributes.
+ * @retval  0  The extended attributes were successfully read.
+ * @retval  1  The file does not have the shatag extended attributes.
+ * @retval  2  The shatag extended attributes are corrupted.
  */
 int xa_read(int fd, xa_t *xa);
 

@@ -45,9 +45,9 @@
  * Clear the timestamp and hash values in @p xa.
  *
  * @li @p xa->alg will be left untouched.
- * @li @p xa->valid will be set to false.
- * @li @p xa->mtime will be zeroed.
- * @li @p xa->hash will be set to a string of ASCII '0's the same length as @p xa->alg.
+ * @li @p xa->hash will be set to a string of ASCII '0's the same length as @p xa->alg
+ *     (and NUL-terminated).
+ * @li The rest of @p xa will be zeroed.
  *
  * @param xa  The extended attribute structure to clear.
  */

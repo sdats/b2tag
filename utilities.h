@@ -28,7 +28,7 @@
  */
 
 /** @file
- * Utility function declarations.
+ * Utility macro and function declarations.
  */
 
 #ifndef UTILITIES_H

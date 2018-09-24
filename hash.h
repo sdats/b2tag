@@ -69,6 +69,7 @@ int fhash(int fd, char *hashbuf, int hashlen, hash_alg_t alg);
  * @param alg  The algorithm to use.
  *
  * @returns Returns the hash size of the @p alg hash algorithm.
+ * @returns Returns 0 if an error occurs.
  */
 int get_alg_size(hash_alg_t alg);
 

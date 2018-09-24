@@ -28,7 +28,7 @@
  */
 
 /** @file
- * Contains miscellaneous utility functions.
+ * Contains utility functions.
  */
 
 #include "utilities.h"
