@@ -52,6 +52,38 @@ function from_hex() {
 	xxd -p -r
 }
 
+# Rudimentary *sum function for blake2s. The coreutils b2sum utility only
+# works with blake2b hashes, so we have to use openssl to verify blake2s.
+function b2ssum() (
+	set -e
+	if [[ ! $1 = -c ]]; then
+		openssl dgst -r -blake2s256 "$@" | sed -r 's/ \*/  /'
+		return 0
+	fi
+
+	# $1 == -c
+	shift
+
+	hashes=$(cat "$@") \
+		|| fail "Failed to read expected hashes: $?"
+
+	while IFS='' read -r line; do
+		test -n "$line" || continue
+
+		file=$(sed -r "s/^\S+ [ *](.+)$/\1/" <<<"$line")
+		expect=$(sed -r "s/^(\S+) [ *].+/\1/" <<<"$line")
+
+		hash=$(b2ssum "$file" | sed -r "s/^(\S+) [ *].+/\1/")
+
+		if [[ ! $expect = $hash ]]; then
+			fail "$file: FAILED"
+			return 1
+		fi
+	done <<<"$hashes"
+
+	return 0
+)
+
 function hash() {
 	local alg="${1:-$DEFAULT_ALG}"
 	local prog
@@ -64,6 +96,10 @@ function hash() {
 			;;
 		blake2|blake2b|blake2b512)
 			prog=b2sum
+			;;
+		blake2s|blake2s256)
+			# Stub function since we can't use b2sum
+			prog=b2ssum
 			;;
 		*)
 			fail "Unknown hash algorithm: $alg"
@@ -84,6 +120,9 @@ function attr_name() {
 	case "$1" in
 		blake2|blake2b|blake2b512)
 			attr=blake2b512
+			;;
+		blake2s|blake2s256)
+			attr=blake2s256
 			;;
 		'')
 			[[ -n $DEFAULT_ALG ]] || return 1
@@ -278,7 +317,7 @@ check_hash "$TEST_FILE" "" $ALG || let RET++
 
 # Test setup: create the test file, hash the test message, and grab the
 # test file's modified time
-for ALG in '' blake2b md5 sha1 sha256 sha512; do
+for ALG in '' blake2b blake2s md5 sha1 sha256 sha512; do
 	HASH=$(echo "$TEST_MESSAGE" | hash $ALG) \
 		|| fail "Could not generate $ALG reference hash: $?" \
 		|| let RET++
