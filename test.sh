@@ -27,7 +27,7 @@
 # If you delete this exception statement from all source files in the
 # program, then also delete it here.
 #
-# This is a simple sanity test for cshatag
+# This is a simple sanity test for b2tag
 #
 
 RET=0
@@ -333,19 +333,19 @@ for ALG in '' blake2b blake2s md5 sha1 sha256 sha512; do
 	check_ts   "$TEST_FILE" "" || let RET++
 	check_hash "$TEST_FILE" "" $ALG || let RET++
 
-	# Make sure cshatag doesn't add xattrs when -n is given
+	# Make sure b2tag doesn't add xattrs when -n is given
 	echo "Test dry-run ($ALG_NAME)"
-	./cshatag -n $args --$ALG "$TEST_FILE" \
-		|| fail "cshatag returned failure: $?" \
+	./b2tag -n $args --$ALG "$TEST_FILE" \
+		|| fail "b2tag returned failure: $?" \
 		|| let RET++
 
 	check_ts   "$TEST_FILE" "" || let RET++
 	check_hash "$TEST_FILE" "" $ALG || let RET++
 
-	# Make sure cshatag adds the proper xattrs
+	# Make sure b2tag adds the proper xattrs
 	echo "Test new file ($ALG_NAME)"
-	./cshatag $args --$ALG "$TEST_FILE" \
-		|| fail "cshatag returned failure: $?" \
+	./b2tag $args --$ALG "$TEST_FILE" \
+		|| fail "b2tag returned failure: $?" \
 		|| let RET++
 
 	check_ts   "$TEST_FILE" "$MTIME" || let RET++
@@ -353,7 +353,7 @@ for ALG in '' blake2b blake2s md5 sha1 sha256 sha512; do
 
 	# Print test
 	echo "Test verify hashes with <hash>sum ($ALG_NAME)"
-	./cshatag -p $args --$ALG "$TEST_FILE" | hash "$ALG" -c - >/dev/null \
+	./b2tag -p $args --$ALG "$TEST_FILE" | hash "$ALG" -c - >/dev/null \
 		|| fail "hash verification failed: ${PIPESTATUS[*]}" \
 		|| let RET++
 

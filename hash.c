@@ -29,7 +29,7 @@
  */
 
 /** @file
- * Hash helper functions for cshatag.
+ * Hash helper functions for b2tag.
  */
 
 #include "hash.h"

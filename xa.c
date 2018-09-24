@@ -29,7 +29,7 @@
  */
 
 /** @file
- * Functions for dealing with extended attributes for cshatag.
+ * Functions for dealing with extended attributes for b2tag.
  */
 
 #include "xa.h"

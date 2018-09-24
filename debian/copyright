@@ -4,7 +4,7 @@ Files: *
 Copyright: 2018 Tim Schlueter
 License: GPL-2+ with OpenSSL exception
 
-Files: cshatag.c hash.c xa.c xa.h
+Files: b2tag.c hash.c xa.c xa.h
 Copyright: 2012 Jakob Unterwurzacher <jakobunt@gmail.com>
            2018 Tim Schlueter
 License: GPL-2+ with OpenSSL exception

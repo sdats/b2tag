@@ -1,20 +1,20 @@
-CSHATAG(1)                       User Commands                      CSHATAG(1)
+B2TAG(1)                         User Commands                        B2TAG(1)
 
 NAME
-       cshatag - detect data corruption with checksums in extended attributes.
+       b2tag - detect data corruption with checksums in extended attributes.
 
 SYNOPSIS
-       cshatag [OPTION]... <FILE>...
+       b2tag [OPTION]... <FILE>...
 
 DESCRIPTION
-       cshatag is a re-implementation (in C) of shatag(1), which helps detect
+       b2tag is a re-implementation (in C) of shatag(1), which helps detect
        silent data corruption using checksums and extended attributes.
 
-       cshatag writes the last modification time (mtime) and the checksum of a
+       b2tag writes the last modification time (mtime) and the checksum of a
        file into the file's extended attributes.
 
-       When run again, cshatag compares stored mtime and checksum to the
-       file's current mtime and checksum.  It will print the name of each file
+       When run again, b2tag compares stored mtime and checksum to the file's
+       current mtime and checksum.  It will print the name of each file
        processed along with its status.
 
        File statuses are:
@@ -34,18 +34,18 @@ DESCRIPTION
             outdated    checksum is wrong and mtime is newer than the sha tag
                         (the file has been updated since the last run)
 
-       cshatag will automatically store the checksums and timestamps for new
+       b2tag will automatically store the checksums and timestamps for new
        files and will update the stored checksums and timestamps for hash ok
        and outdated files (unless --dry-run is specified).
 
-       cshatag will not update the stored checksums and timestamps for
+       b2tag will not update the stored checksums and timestamps for
        backdated, corrupt, or invalid files unless --force is specified.
 
-       cshatag aims to be format-compatible with shatag and uses the same
+       b2tag aims to be format-compatible with shatag and uses the same
        extended attributes (see the COMPATIBILITY section).
 
 NOTES
-       Since cshatag operates using extended attributes, any files specified
+       Since b2tag operates using extended attributes, any files specified
        must be stored on a filesystem that supports extended user attributes.
        Check your filesystem's documentation for more information.
 
@@ -59,7 +59,7 @@ OPTIONS
    Optional Arguments
        -c, --check
               Check the hashes on all specified files. Without this option,
-              cshatag assumes all files with the same timestamp are OK without
+              b2tag assumes all files with the same timestamp are OK without
               checking their contents.
 
        -f, --force
@@ -90,7 +90,7 @@ OPTIONS
               the opposite of --quiet.
 
        -V, --version
-              Output version information about cshatag and exit.
+              Output version information about b2tag and exit.
 
    Hash Algorithms
        --blake2b
@@ -113,20 +113,20 @@ OPTIONS
 EXAMPLES
        Create or update the stored hashes for a file:
 
-       cshatag example.txt
+       b2tag example.txt
 
        Verify that a file matches its stored attributes with the sha256 hash
        algorithm:
 
-       cshatag -c --sha256 example.txt
+       b2tag -c --sha256 example.txt
 
        Verify all files in a directory, and filter-out OK file messages:
 
-       cshatag -cr /example/ | grep -v ': OK$'
+       b2tag -cr /example/ | grep -v ': OK$'
 
        Print a file's stored sha512 hashes:
 
-       cshatag -p --sha512 example.txt > example.sha512
+       b2tag -p --sha512 example.txt > example.sha512
 
        This allows you to verify the file's contents with the sha512sum
        utility (e.g. after copying the files to another system without shatag
@@ -137,13 +137,12 @@ EXAMPLES
        Copy a file to a different system and verify its contents:
 
        rsync -tX example.txt user@example.com:example.txt
-       ssh user@example.com cshatag -cn example.txt
+       ssh user@example.com b2tag -cn example.txt
 
        Create and update the hashes for all files over 1 MB on the root
        filesystem:
 
-       find / -xdev -type f -size +1M -print0 | xargs -r0 cshatag >
-       cshatag.log
+       find / -xdev -type f -size +1M -print0 | xargs -r0 b2tag > b2tag.log
 
        To remove the extended attributes from all files:
 
@@ -158,11 +157,11 @@ EXIT STATUS
 COMPATIBILITY
        The original shatag utility only supports the sha256 hash algorithm.
 
-       Additionally, cshatag writes the user.shatag.ts field with full
+       Additionally, b2tag writes the user.shatag.ts field with full
        nanosecond precision, while python uses a floating point number for the
        whole mtime. As a result, the original shatag utility is only accurate
-       to within about 200 ns. Because of this, cshatag treats timestamps
-       within 1 µs as equal.
+       to within about 200 ns. Because of this, b2tag treats timestamps within
+       1 µs as equal.
 
 AUTHOR
        Written by Jakob Unterwurzacher, and Tim Schlueter.
@@ -190,6 +189,6 @@ SEE ALSO
 
 AVAILABILITY
        Up-to-date sources can be found at:
-       https://github.com/modelrockettier/cshatag
+       https://github.com/modelrockettier/b2tag
 
-cshatag 0.1                     September 2018                      CSHATAG(1)
+b2tag 0.1                       September 2018                        B2TAG(1)

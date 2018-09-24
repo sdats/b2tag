@@ -3,6 +3,8 @@ MKDIR   ?= mkdir
 
 PREFIX ?= /usr/local
 
+NAME = b2tag
+
 # Remove trailing slash (if present)
 override PREFIX  := $(PREFIX:/=)
 # Remove trailing slash (if present)
@@ -13,7 +15,7 @@ CFLAGS += $(EXTRA_CFLAGS)
 LDLIBS = -lcrypto
 LDLIBS += $(EXTRA_LDLIBS)
 
-OBJECTS = cshatag.o file.o hash.o utilities.o xa.o
+OBJECTS = b2tag.o file.o hash.o utilities.o xa.o
 
 VERSION ?= $(shell git describe --dirty=+ 2>/dev/null || echo 0.1-nogit)
 
@@ -22,17 +24,20 @@ VERSION ?= $(shell git describe --dirty=+ 2>/dev/null || echo 0.1-nogit)
 # Secondary expansion allows using $@ and co in the dependencies
 .SECONDEXPANSION:
 
-all: cshatag
+all: $(NAME)
 
 debug: CFLAGS := -ggdb3 $(filter-out -DNDEBUG, $(CFLAGS))
-debug: cshatag
+debug: $(NAME)
 
-cshatag: $(OBJECTS) | $(OBJECTS:.o=.d)
+$(NAME): $(OBJECTS) | $(OBJECTS:.o=.d)
 
 MAKECMDGOALS ?= all
 
-ifneq ($(filter %.o %.d all cshatag debug install,$(MAKECMDGOALS)),)
+# Don't build the .d files if we're cleaning or just building the README
+ifeq ($(filter %.o %.d clean,$(MAKECMDGOALS)),)
+ifneq ($(MAKECMDGOALS),README)
 include $(wildcard *.d)
+endif
 endif
 
 %.o %.d: %.c
@@ -52,10 +57,10 @@ utilities.o utilities.d: .version
 deb:
 	debuild --no-sign --no-pre-clean --build=binary --diff-ignore --tar-ignore
 
-README: cshatag.1
+README: $(NAME).1
 	MANWIDTH=80 man --nh --nj -l $< > $@
 
-test: cshatag
+test: $(NAME)
 	./test.sh
 
 %.gz: %
@@ -72,7 +77,7 @@ $(DESTDIR)$(PREFIX)/bin/%: $$(@F) | $$(@D)/
 $(DESTDIR)$(PREFIX)/%: $$(@F) | $$(@D)/
 	$(INSTALL) -m0644 $< $@
 
-install: $(DESTDIR)$(PREFIX)/bin/cshatag $(DESTDIR)$(PREFIX)/share/man/man1/cshatag.1.gz
+install: $(DESTDIR)$(PREFIX)/bin/$(NAME) $(DESTDIR)$(PREFIX)/share/man/man1/$(NAME).1.gz
 
 clean:
-	$(RM) cshatag .version $(OBJECTS) $(OBJECTS:.o=.d)
+	$(RM) $(NAME) .version $(OBJECTS) $(OBJECTS:.o=.d)

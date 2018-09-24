@@ -37,7 +37,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "cshatag.h"
+#include "b2tag.h"
 
 /**
  * Compare two timespec structures.
@@ -60,7 +60,7 @@ int ts_compare(struct timespec ts1, struct timespec ts2);
 void die(const char *fmt, ...) __attribute__((noreturn, format(printf, 1, 2)));
 
 /**
- * Prints version information for cshatag.
+ * Prints version information for b2tag.
  */
 void version(void);
 

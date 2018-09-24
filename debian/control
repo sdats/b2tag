@@ -1,11 +1,11 @@
-Source: cshatag
+Source: b2tag
 Maintainer: Tim Schlueter <schlueter.tim@linux.com>
 Section: utils
 Priority: optional
 Standards-Version: 3.9.2
 Build-Depends: attr, debhelper (>= 10), devscripts, libssl-dev, xxd
 
-Package: cshatag
+Package: b2tag
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Recommends: man-db

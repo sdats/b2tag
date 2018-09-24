@@ -1,28 +1,28 @@
 .\"Generate README file for github: make README
-.TH CSHATAG 1 "September 2018" "cshatag 0.1" "User Commands"
+.TH B2TAG 1 "September 2018" "b2tag 0.1" "User Commands"
 .SH NAME
 .P
-cshatag - detect data corruption with checksums in extended attributes.
+b2tag - detect data corruption with checksums in extended attributes.
 .P
 .SH SYNOPSIS
 .P
-.B cshatag
+.B b2tag
 [\fIOPTION\fR]... <\fIFILE\fR>...
 .P
 .SH DESCRIPTION
 .P
-.B cshatag
+.B b2tag
 is a re-implementation (in C) of
 .B shatag(1),
 which helps detect silent data corruption using checksums and extended
 attributes.
 .P
-.B cshatag
+.B b2tag
 writes the last modification time (mtime) and the checksum of a file into the
 file's extended attributes.
 .P
 When run again,
-.B cshatag
+.B b2tag
 compares stored mtime and checksum to the file's current mtime and checksum.
 It will print the name of each file processed along with its status.
 .P
@@ -53,7 +53,7 @@ checksum is wrong and mtime is newer than the sha tag
 (the file has been updated since the last run)
 .P
 .RE
-.B cshatag
+.B b2tag
 will automatically store the checksums and timestamps for
 .B new
 files and will update the stored checksums and timestamps for
@@ -64,7 +64,7 @@ files (unless
 .B --dry-run
 is specified).
 .P
-.B cshatag
+.B b2tag
 will
 .I not
 update the stored checksums and timestamps for
@@ -76,7 +76,7 @@ files unless
 .B --force
 is specified.
 .P
-.B cshatag
+.B b2tag
 aims to be format-compatible with
 .B shatag
 and uses the same extended attributes (see the
@@ -86,7 +86,7 @@ section).
 .SH NOTES
 .P
 Since
-.B cshatag
+.B b2tag
 operates using extended attributes, any files specified must be stored on a
 filesystem that supports extended user attributes. Check your filesystem's
 documentation for more information.
@@ -106,7 +106,7 @@ Files to check and hash.
 .TP
 .BR "-c, --check"
 Check the hashes on all specified files. Without this option,
-.B cshatag
+.B b2tag
 assumes all files with the same timestamp are OK without checking their
 contents.
 .TP
@@ -138,7 +138,7 @@ multiple times to print even more messages. This is the opposite of
 .TP
 .BR "-V, --version"
 Output version information about
-.B cshatag
+.B b2tag
 and exit.
 .P
 .SS Hash Algorithms
@@ -168,19 +168,19 @@ Use the MD5 hash algorithm (not recommended).
 .P
 Create or update the stored hashes for a file:
 .P
-.B cshatag example.txt
+.B b2tag example.txt
 .P
 Verify that a file matches its stored attributes with the sha256 hash algorithm:
 .P
-.B cshatag -c --sha256 example.txt
+.B b2tag -c --sha256 example.txt
 .P
 Verify all files in a directory, and filter-out OK file messages:
 .P
-.B cshatag -cr /example/ | grep -v ': OK$'
+.B b2tag -cr /example/ | grep -v ': OK$'
 .P
 Print a file's stored sha512 hashes:
 .P
-.B cshatag -p --sha512 example.txt > example.sha512
+.B b2tag -p --sha512 example.txt > example.sha512
 .P
 This allows you to verify the file's contents with the sha512sum utility
 (e.g. after copying the files to another system without shatag installed):
@@ -191,12 +191,12 @@ Copy a file to a different system and verify its contents:
 .P
 .B rsync -tX example.txt user@example.com:example.txt
 .br
-.B ssh user@example.com cshatag -cn example.txt
+.B ssh user@example.com b2tag -cn example.txt
 .P
 Create and update the hashes for all files over 1 MB on the root
 filesystem:
 .P
-.B find / -xdev -type f -size +1M -print0 | xargs -r0 cshatag > cshatag.log
+.B find / -xdev -type f -size +1M -print0 | xargs -r0 b2tag > b2tag.log
 .P
 To remove the extended attributes from all files:
 .P
@@ -218,12 +218,12 @@ The original
 utility only supports the sha256 hash algorithm.
 .P
 Additionally,
-.B cshatag
+.B b2tag
 writes the user.shatag.ts field with full nanosecond precision, while python
 uses a floating point number for the whole mtime. As a result, the original
 .B shatag
 utility is only accurate to within about 200 ns. Because of this,
-.B cshatag
+.B b2tag
 treats timestamps within 1 \[mc]s as equal.
 .P
 .SH AUTHOR
@@ -261,4 +261,4 @@ https://bitbucket.org/maugier/shatag
 .P
 Up-to-date sources can be found at:
 .br
-https://github.com/modelrockettier/cshatag
+https://github.com/modelrockettier/b2tag

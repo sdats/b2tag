@@ -91,9 +91,9 @@ void die(const char *fmt, ...)
 }
 
 /**
- * Prints version information for cshatag.
+ * Prints version information for b2tag.
  */
 void version(void)
 {
-	printf("cshatag version %s\n", VERSION_STRING);
+	printf("b2tag version %s\n", VERSION_STRING);
 }

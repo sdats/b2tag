@@ -1,4 +1,17 @@
-cshatag (0.1-1) UNRELEASED; urgency=low
+b2tag (0.2-1) unstable; urgency=medium
+
+  * Added getopt arg parsing.
+  * Added several other hash algorithms.
+  * Change the hash algorithm at runtime from the command-line.
+  * Hash multiple files in a single invocation.
+  * Recursively hash files in a directory.
+  * Print the stored file hashes in the coreutils *sum format.
+  * Made blake2b the default hash algorithm.
+  * Renamed utility to b2tag.
+
+ -- Tim Schlueter <schlueter.tim@linux.com>  Sun, 23 Sep 2018 20:21:26 -0700
+
+cshatag (0.1-1) unstable; urgency=low
 
   * Initial release.
 

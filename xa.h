@@ -45,7 +45,7 @@
 #endif
 
 /**
- * Metadata structure for cshatag.
+ * Metadata structure for b2tag.
  */
 typedef struct xa_s
 {

@@ -1,5 +1,5 @@
 # Ignore the produced binary
-cshatag
+b2tag
 # Ignore the .version file
 .version
 # Object files

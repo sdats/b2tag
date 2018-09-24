@@ -28,11 +28,11 @@
  */
 
 /** @file
- * Shared functions for the cshatag utility.
+ * Shared functions for the b2tag utility.
  */
 
-#ifndef CSHATAG_H
-#define CSHATAG_H
+#ifndef B2TAG_H
+#define B2TAG_H
 
 #include <stdbool.h>
 
@@ -61,4 +61,4 @@ struct args_s {
 /** The options set by command-line arguments. */
 extern struct args_s args;
 
-#endif /* CSHATAG_H */
+#endif /* B2TAG_H */

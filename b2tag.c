@@ -29,7 +29,7 @@
  */
 
 /** @file
- * Main file for the cshatag utility (mostly command-line processing).
+ * Main file for the b2tag utility (mostly command-line processing).
  */
 
 /**
@@ -37,7 +37,7 @@
  * @include README
  */
 
-#include "cshatag.h"
+#include "b2tag.h"
 
 #include <assert.h>
 #include <ctype.h>
@@ -53,7 +53,7 @@
 struct args_s args;
 
 /**
- * Prints a usage message for cshatag.
+ * Prints a usage message for b2tag.
  *
  * @param program  The name of the program being run.
  */
@@ -112,7 +112,7 @@ static const struct option long_opts[] = {
 };
 
 /**
- * The entry point to the cshatag utility.
+ * The entry point to the b2tag utility.
  *
  * @param argc  The number of command-line arguments.
  * @param argv  The command-line arguments.
