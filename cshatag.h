@@ -36,12 +36,14 @@
 
 #include <stdbool.h>
 
+#include "hash.h"
+
 /**
  * The options passed to the program on the command-line.
  */
 struct args_s {
 	/** Which hash algorithm to use. */
-	const char *alg;
+	hash_alg_t alg;
 	/** Whether to check the hashes on up-to-date files. */
 	bool check;
 	/** Don't change any extended attributes. */

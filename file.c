@@ -181,7 +181,7 @@ static enum file_state get_file_state(int fd, xa_t *stored, xa_t *actual)
 	assert(fd >= 0);
 	assert(stored != NULL);
 	assert(actual != NULL);
-	assert((void *)stored->alg == (void *)actual->alg);
+	assert(stored->alg == actual->alg);
 
 	/* Skip the fstat call if mtime seconds is already set. */
 	if (actual->mtime.tv_sec == 0) {

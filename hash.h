@@ -39,6 +39,15 @@
 /** The largest possible hash size. */
 #define MAX_HASH_SIZE EVP_MAX_MD_SIZE
 
+typedef enum hash_alg {
+	HASH_ALG_MD5,
+	HASH_ALG_SHA1,
+	HASH_ALG_SHA256,
+	HASH_ALG_SHA512,
+	HASH_ALG_BLAKE2B,
+	HASH_ALG_BLAKE2S,
+} hash_alg_t;
+
 /**
  * Hash the contents of file @p fd using the @p alg hash algorithm.
  *
@@ -52,7 +61,7 @@
  * @retval 0  The contents of @p fd were successfully hashed.
  * @retval !0 An error occurred while hashing the contents of @p fd.
  */
-int fhash(int fd, char *hashbuf, int hashlen, const char *alg);
+int fhash(int fd, char *hashbuf, int hashlen, hash_alg_t alg);
 
 /**
  * Returns the hash size of @p alg.
@@ -61,6 +70,25 @@ int fhash(int fd, char *hashbuf, int hashlen, const char *alg);
  *
  * @returns Returns the hash size of the @p alg hash algorithm.
  */
-int get_alg_size(const char *alg);
+int get_alg_size(hash_alg_t alg);
+
+/**
+ * Returns the name of @p alg as a string.
+ *
+ * @param alg  The algorithm to look up.
+ *
+ * @returns Returns the name of the @p alg hash algorithm.
+ */
+const char * get_alg_name(hash_alg_t alg);
+
+/**
+ * Looks up a hash algorithm by name and sets @p alg if not NULL.
+ *
+ * @param name The algorithm to look up.
+ * @param alg  Where to store the algorithm type (can be NULL).
+ *
+ * @returns Returns 0 on success and a negative number on failure.
+ */
+int get_alg_by_name(const char *name, hash_alg_t *alg);
 
 #endif /* HASH_H */

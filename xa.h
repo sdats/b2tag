@@ -54,7 +54,7 @@ typedef struct xa_s
 	/** The file's last modified time. */
 	struct timespec mtime;
 	/** The hash algorithm to use. */
-	const char *alg;
+	hash_alg_t alg;
 	/** The file data's hash value as an ASCII hex string. */
 	char hash[MAX_HASH_SIZE * 2 + 1];
 } xa_t;

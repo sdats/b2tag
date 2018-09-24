@@ -53,28 +53,25 @@
  */
 void xa_clear(xa_t *xa)
 {
-	static xa_t empty;
+	hash_alg_t alg;
+	size_t len;
+	int err;
 
 	assert(xa != NULL);
 
-	if ((void *)empty.alg != (void *)xa->alg) {
-		size_t len;
-		/* Save errno. */
-		int err = errno;
+	/* Save errno. */
+	err = errno;
 
-		empty.alg = xa->alg;
-		len = (size_t)get_alg_size(empty.alg) * 2;
+	alg = xa->alg;
+	len = (size_t)get_alg_size(alg) * 2;
 
-		memset(xa, 0, sizeof(*xa));
+	memset(xa, 0, sizeof(*xa));
 
-		xa->alg = empty.alg;
-		memset(xa->hash, '0', len);
+	xa->alg = alg;
+	memset(xa->hash, '0', len);
 
-		/* Restore errno. */
-		errno = err;
-	}
-
-	*xa = empty;
+	/* Restore errno. */
+	errno = err;
 }
 
 /**
@@ -161,7 +158,7 @@ int xa_read(int fd, xa_t *xa)
 	}
 
 	/* Read hash xattr. */
-	snprintf(buf, sizeof(buf), "user.shatag.%s", xa->alg);
+	snprintf(buf, sizeof(buf), "user.shatag.%s", get_alg_name(xa->alg));
 	len = fgetxattr(fd, buf, xa->hash, sizeof(xa->hash) - 1);
 	if (len < 0) {
 		xa_clear(xa);
@@ -221,12 +218,11 @@ int xa_write(int fd, xa_t *xa)
 
 	assert(fd >= 0);
 	assert(xa != NULL);
-	assert(xa->alg != NULL);
 
 	if (!xa->valid)
 		return -EINVAL;
 
-	snprintf(buf, sizeof(buf), "user.shatag.%s", xa->alg);
+	snprintf(buf, sizeof(buf), "user.shatag.%s", get_alg_name(xa->alg));
 	err = fsetxattr(fd, buf, &xa->hash, strlen(xa->hash), 0);
 	if (err != 0) {
 		pr_err("Failed to set `%s' xattr: %m\n", buf);

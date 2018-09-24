@@ -39,6 +39,7 @@
 
 #include "cshatag.h"
 
+#include <assert.h>
 #include <ctype.h>
 #include <getopt.h>
 #include <string.h>
@@ -49,7 +50,7 @@
 
 
 /** The hash algorithm to use. */
-#define DEFAULT_HASHALG "sha256"
+#define DEFAULT_HASHALG HASH_ALG_SHA256
 
 /** The options set by command-line arguments. */
 struct args_s args;
@@ -136,13 +137,14 @@ int main(int argc, char *argv[])
 	while ((opt = getopt_long(argc, argv, "cfhnpqrvV", long_opts, &option_index)) != -1) {
 		switch (opt) {
 		case 0:
-			args.alg = long_opts[option_index].name;
+			ret = get_alg_by_name(long_opts[option_index].name, &args.alg);
+			assert(ret == 0);
 			break;
 		case 1:
-			args.alg = "blake2b512";
+			args.alg = HASH_ALG_BLAKE2B;
 			break;
 		case 2:
-			args.alg = "blake2s256";
+			args.alg = HASH_ALG_BLAKE2S;
 			break;
 		case 'c':
 			args.check = true;

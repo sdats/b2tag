@@ -35,12 +35,47 @@
 #include "hash.h"
 
 #include <assert.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "utilities.h"
 
 /** The size of the file read buffer. */
 #define BUFSZ 65536
+
+typedef const EVP_MD *(*evp_func)(void);
+
+struct alg_data {
+	const char *name;
+	evp_func md;
+};
+
+static struct alg_data hash_alg_data[] = {
+	[HASH_ALG_MD5]     = {
+		.name = "md5",
+		.md = EVP_md5
+	},
+	[HASH_ALG_SHA1]    = {
+		.name ="sha1",
+		.md = EVP_sha1
+	},
+	[HASH_ALG_SHA256]  = {
+		.name ="sha256",
+		.md = EVP_sha256
+	},
+	[HASH_ALG_SHA512]  = {
+		.name ="sha512",
+		.md = EVP_sha512
+	},
+	[HASH_ALG_BLAKE2B] = {
+		.name ="blake2b512",
+		.md = EVP_blake2b512
+	},
+	[HASH_ALG_BLAKE2S] = {
+		.name ="blake2s256",
+		.md = EVP_blake2s256
+	},
+};
 
 /**
  * Converts a raw array into a hex string.
@@ -89,11 +124,10 @@ static int bin2hex(char *out, int outlen, unsigned char *bin, int len)
  * @retval 0  The contents of @p fd were successfully hashed.
  * @retval !0 An error occurred while hashing the contents of @p fd.
  */
-int fhash(int fd, char *hashbuf, int hashlen, const char *alg)
+int fhash(int fd, char *hashbuf, int hashlen, hash_alg_t alg)
 {
 	int err = -1;
 	EVP_MD_CTX *c;
-	EVP_MD const *a;
 	char *buf;
 	unsigned char rawhash[EVP_MAX_MD_SIZE];
 	ssize_t len;
@@ -102,7 +136,9 @@ int fhash(int fd, char *hashbuf, int hashlen, const char *alg)
 	assert(fd >= 0);
 	assert(hashbuf != NULL);
 	assert(hashlen > 0);
-	assert(alg != NULL);
+	assert(alg < ARRAY_SIZE(hash_alg_data));
+	assert(hash_alg_data[alg].md != NULL);
+	assert(hash_alg_data[alg].md() != NULL);
 
 	buf = malloc(BUFSZ);
 	c = EVP_MD_CTX_new();
@@ -112,22 +148,16 @@ int fhash(int fd, char *hashbuf, int hashlen, const char *alg)
 		goto out;
 	}
 
-	a = EVP_get_digestbyname(alg);
-	if (NULL == a) {
-		pr_err("Failed to find hash algorithm %s\n", alg);
-		goto out;
-	}
-
-	if (EVP_DigestInit_ex(c, a, NULL) == 0) {
+	if (EVP_DigestInit_ex(c, hash_alg_data[alg].md(), NULL) == 0) {
 		pr_err("Failed to initialize digest\n");
 		goto out;
 	}
 
-	/* The length of the algorithm's hash (as a hex string, including NUL). */
+	/* The length of the algorithm's hash. */
 	alg_len = EVP_MD_CTX_size(c);
 
 	assert(alg_len > 0);
-	assert(alg_len <= MAX_HASH_LEN);
+	assert(alg_len <= MAX_HASH_SIZE);
 
 	if ((alg_len * 2) >= hashlen) {
 		pr_err("Hash exceeds buffer size: %d > %d\n", alg_len * 2 + 1, hashlen);
@@ -173,26 +203,60 @@ out:
  * @returns Returns the hash size of the @p alg hash algorithm.
  * @returns Returns 0 if an error occurs.
  */
-int get_alg_size(const char *alg)
+int get_alg_size(hash_alg_t alg)
 {
-	EVP_MD const *a;
 	int len;
 
-	assert(alg != NULL);
+	assert(alg < ARRAY_SIZE(hash_alg_data));
+	assert(hash_alg_data[alg].md != NULL);
+	assert(hash_alg_data[alg].md() != NULL);
 
-	a = EVP_get_digestbyname(alg);
-
-	if (a == NULL) {
-		pr_err("Failed to find hash algorithm \"%s\"\n", alg);
-		return 0;
-	}
-
-	len = EVP_MD_size(a);
+	len = EVP_MD_size(hash_alg_data[alg].md());
 
 	if (len <= 0 || len > EVP_MAX_MD_SIZE) {
-		pr_err("Invalid algorithm size for \"%s\": %d\n", alg, len);
+		pr_err("Invalid algorithm size for alg %d: %d\n", (int)alg, len);
 		len = 0;
 	}
 
 	return len;
+}
+
+/**
+ * Returns the name of @p alg as a string.
+ *
+ * @param alg  The algorithm to look up.
+ *
+ * @returns Returns the name of the @p alg hash algorithm.
+ */
+const char * get_alg_name(hash_alg_t alg)
+{
+	assert(alg < ARRAY_SIZE(hash_alg_data));
+	assert(hash_alg_data[alg].name != NULL);
+
+	return hash_alg_data[alg].name;
+}
+
+/**
+ * Looks up a hash algorithm by name and sets @p alg if not NULL.
+ *
+ * @param name The algorithm to look up.
+ * @param alg  Where to store the algorithm type (can be NULL).
+ *
+ * @returns Returns 0 on success and a negative number on failure.
+ */
+int get_alg_by_name(const char *name, hash_alg_t *alg)
+{
+	size_t i;
+
+	assert(name != NULL);
+
+	for (i = 0; i < ARRAY_SIZE(hash_alg_data); i++) {
+		if (strcmp(hash_alg_data[i].name, name) == 0) {
+			if (alg != NULL)
+				*alg = (hash_alg_t)i;
+			return 0;
+		}
+	}
+
+	return -1;
 }
