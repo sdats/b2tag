@@ -37,6 +37,8 @@ RET=0
 TEST_FILE=${TEST_FILE:-test.txt}
 TEST_MESSAGE=${TEST_MESSAGE:-The quick brown fox jumped over the lazy dog.}
 
+DEFAULT_ALG=sha256
+
 function fail() {
 	echo "$*" >&2
 	return 1
@@ -51,7 +53,7 @@ function from_hex() {
 }
 
 function hash() {
-	local alg="${1:-sha256}"
+	local alg="${1:-$DEFAULT_ALG}"
 	local prog
 
 	shift
@@ -60,12 +62,12 @@ function hash() {
 		md5|sha1|sha256|sha512)
 			prog=${alg}sum
 			;;
-		blake2|blake2b512)
+		blake2|blake2b|blake2b512)
 			prog=b2sum
 			;;
 		*)
 			fail "Unknown hash algorithm: $alg"
-			return 1;
+			return 1
 			;;
 	esac
 
@@ -76,17 +78,56 @@ function get_mtime() {
 	stat --format='%.Y' "$@"
 }
 
+function attr_name() {
+	local attr
+
+	case "$1" in
+		blake2|blake2b|blake2b512)
+			attr=blake2b512
+			;;
+		'')
+			[[ -n $DEFAULT_ALG ]] || return 1
+			attr_name "$DEFAULT_ALG"
+			return $?
+			;;
+		*)
+			attr="$1"
+			;;
+	esac
+
+	echo "user.shatag.$attr"
+}
+
 function get_attr_hex() {
-	local attr="$1"
+	local attr=$(attr_name "$1")
 	local file="$2"
+
 	[[ $# -eq 2 ]] || return 1
-	[[ $attr = blake2 ]] && attr=blake2b512
-	getfattr --only-values --name "user.shatag.$attr" "$file" 2>/dev/null | to_hex
+
+	# getfattr can't mix --only-values with --encoding
+	getfattr --only-values --name="$attr" "$file" 2>/dev/null | to_hex
+}
+
+function set_attr_hex() {
+	local attr=$(attr_name "$1")
+	local val="$2"
+	local file="$3"
+
+	[[ $# -eq 3 ]] || return 1
+
+	setfattr --name="$attr" --value="0x$val" "$file"
 }
 
 function clear_attr() {
-	[[ $# -ge 2 ]] \
-		&& setfattr -x "user.shatag.$1" "${@:2}" 2>/dev/null
+	local attr=$(attr_name "$1")
+	local file="$2"
+
+	[[ $# -ge 2 ]] || return 1
+
+	setfattr --remove="$attr" "$file" 2>/dev/null
+
+	# Return success if the attribute doesn't exist, and failure if it does
+	! getfattr --name="$attr" "$file" &>/dev/null
 }
 
 function print_ts() {
@@ -168,7 +209,7 @@ function check_hash() {
 	# Blank expect = hash should be unset
 	expect="$2"
 
-	alg="${3:-sha256}"
+	alg="${3:-$DEFAULT_ALG}"
 
 	hash_hex=$(get_attr_hex "$alg" "$file")
 	err=$?
@@ -194,6 +235,10 @@ function check_hash() {
 		fail "Empty $alg hash attribute (expected $expect)"
 		return 1
 	elif [[ $hash_hex =~ ^(3[0-9]|[46][1-6])+$ ]]; then
+		if [[ $expect = * ]]; then
+			return 0
+		fi
+
 		hash=$(from_hex <<<"$hash_hex")
 		if [[ ! $expect = $hash ]]; then
 			fail "${alg^} hash mismatch: '$expect' != '$hash'"
@@ -233,7 +278,7 @@ check_hash "$TEST_FILE" "" $ALG || let RET++
 
 # Test setup: create the test file, hash the test message, and grab the
 # test file's modified time
-for ALG in '' md5 sha1 sha256 sha512 blake2; do
+for ALG in '' blake2b md5 sha1 sha256 sha512; do
 	HASH=$(echo "$TEST_MESSAGE" | hash $ALG) \
 		|| fail "Could not generate $ALG reference hash: $?" \
 		|| let RET++
@@ -243,8 +288,6 @@ for ALG in '' md5 sha1 sha256 sha512 blake2; do
 		|| let RET++
 
 	ALG_NAME="${ALG:-default}"
-
-	clear_attr ts "$TEST_FILE"
 
 	# Make sure the newly-created test file doesn't have the shatag xattrs
 	echo "Test sanity ($ALG_NAME)"
@@ -272,12 +315,13 @@ for ALG in '' md5 sha1 sha256 sha512 blake2; do
 	# Print test
 	echo "Test verify hashes with <hash>sum ($ALG_NAME)"
 	./cshatag -p $args --$ALG "$TEST_FILE" | hash "$ALG" -c - >/dev/null \
-		|| fail "cshatag returned failure: $?" \
+		|| fail "hash verification failed: ${PIPESTATUS[*]}" \
 		|| let RET++
 
-	if [[ -z $ALG ]]; then
-		clear_attr sha256 "$TEST_FILE"
-	fi
+	(( RET == 0 )) || break
+
+	clear_attr ts "$TEST_FILE"
+	clear_attr "$ALG" "$TEST_FILE"
 done
 
 # If the test was successful, remove the test file

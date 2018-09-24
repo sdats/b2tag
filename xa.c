@@ -53,21 +53,25 @@
  */
 void xa_clear(xa_t *xa)
 {
-	/* Keep an empty static structure around so we only have to call snprintf once. */
-	static xa_t empty = (xa_t){ 0 };
+	static xa_t empty;
 
 	assert(xa != NULL);
 
 	if ((void *)empty.alg != (void *)xa->alg) {
-		int tmp = errno;
+		size_t len;
+		/* Save errno. */
+		int err = errno;
 
 		empty.alg = xa->alg;
-		empty.valid = false;
+		len = (size_t)get_alg_size(empty.alg) * 2;
 
-		snprintf(empty.hash, sizeof(empty.hash), "%0*d", get_alg_size(empty.alg) * 2, 0);
+		memset(xa, 0, sizeof(*xa));
 
-		/* Restore errno after the snprintf() call. */
-		errno = tmp;
+		xa->alg = empty.alg;
+		memset(xa->hash, '0', len);
+
+		/* Restore errno. */
+		errno = err;
 	}
 
 	*xa = empty;
@@ -139,7 +143,7 @@ int xa_read(int fd, xa_t *xa)
 
 	buf[len] = '\0';
 
-	err = sscanf(buf, "%lu.%n%10lu%n", &xa->mtime.tv_sec, &start, &xa->mtime.tv_nsec, &end);
+	err = sscanf(buf, "%ld.%n%10ld%n", &xa->mtime.tv_sec, &start, &xa->mtime.tv_nsec, &end);
 	if (err < 1) {
 		pr_err("Malformed timestamp: %m\n");
 		xa_clear(xa);

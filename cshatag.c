@@ -52,7 +52,7 @@
 #define DEFAULT_HASHALG "sha256"
 
 /** The options set by command-line arguments. */
-struct args_s args = (struct args_s){ 0 };
+struct args_s args;
 
 /**
  * Prints a usage message for cshatag.
@@ -179,6 +179,8 @@ int main(int argc, char *argv[])
 			return EXIT_FAILURE;
 		}
 	}
+
+	ret = 0;
 
 	argc -= optind;
 	argv += optind;
