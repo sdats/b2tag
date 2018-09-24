@@ -40,7 +40,7 @@ TEST_MESSAGE=${TEST_MESSAGE:-The quick brown fox jumped over the lazy dog.}
 DEFAULT_ALG=blake2b
 
 function fail() {
-	warn "$@"
+	echo "$*" >&2
 	return 1
 }
 
