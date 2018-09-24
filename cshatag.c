@@ -49,9 +49,6 @@
 #include "utilities.h"
 
 
-/** The hash algorithm to use. */
-#define DEFAULT_HASHALG HASH_ALG_SHA256
-
 /** The options set by command-line arguments. */
 struct args_s args;
 
@@ -83,11 +80,9 @@ static void usage(const char *program)
 		"  -V, --version         output version information and exit\n"
 		"\n"
 		"Hash algorithms:\n"
-		"  --md5 (deprecated)               --sha1 (deprecated)\n"
-		"  --sha256 (shatag compatible)     --sha512\n"
-		"  --blake2 (512-bit, recommended)  --blake2s (256-bit)\n"
-		"\n"
-		"Note: the original shatag python utility only supports sha256.\n",
+		"  --blake2b (default, 512-bit)  --blake2s (256-bit)\n"
+		"  --sha512                      --sha256 (shatag compatible)\n"
+		"  --sha1 (deprecated)           --md5 (deprecated)\n",
 		program);
 }
 
@@ -132,7 +127,7 @@ int main(int argc, char *argv[])
 	int opt;
 	int option_index = 0;
 
-	args.alg = DEFAULT_HASHALG;
+	args.alg = HASH_ALG_BLAKE2B;
 
 	while ((opt = getopt_long(argc, argv, "cfhnpqrvV", long_opts, &option_index)) != -1) {
 		switch (opt) {

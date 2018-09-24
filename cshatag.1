@@ -144,22 +144,25 @@ and exit.
 .SS Hash Algorithms
 .P
 .TP
-.BR --md5
-Use the MD5 hash algorithm (not recommended).
+.BR --blake2b
+Use the Blake2b 512-bit hash algorithm (default).
 .TP
-.BR --sha1
-Use the SHA1 hash algorithm (not recommended).
-.TP
-.BR --sha256
-Use the SHA256 hash algorithm (default,
-.B shatag
-compatible).
+.BR --blake2s
+Use the Blake2s 256-bit hash algorithm (recommended for 32-bit systems).
 .TP
 .BR --sha512
 Use the SHA512 hash algorithm.
 .TP
-.BR --blake2
-Use the Blake2b 512-bit hash algorithm (recommended).
+.BR --sha256
+Use the SHA256 hash algorithm
+.B (shatag
+compatible).
+.TP
+.BR --sha1
+Use the SHA1 hash algorithm (not recommended).
+.TP
+.BR --md5
+Use the MD5 hash algorithm (not recommended).
 .P
 .SH EXAMPLES
 .P
@@ -167,9 +170,9 @@ Create or update the stored hashes for a file:
 .P
 .B cshatag example.txt
 .P
-Verify that a file matches its stored attributes with the blake2 hash algorithm:
+Verify that a file matches its stored attributes with the sha256 hash algorithm:
 .P
-.B cshatag -c --blake2 example.txt
+.B cshatag -c --sha256 example.txt
 .P
 Verify all files in a directory, and filter-out OK file messages:
 .P
@@ -210,6 +213,11 @@ An error occurred or at least 1 file is backdated, corrupt, or invalid
 .P
 .SH COMPATIBILITY
 .P
+The original
+.B shatag
+utility only supports the sha256 hash algorithm.
+.P
+Additionally,
 .B cshatag
 writes the user.shatag.ts field with full nanosecond precision, while python
 uses a floating point number for the whole mtime. As a result, the original
@@ -217,10 +225,6 @@ uses a floating point number for the whole mtime. As a result, the original
 utility is only accurate to within about 200 ns. Because of this,
 .B cshatag
 treats timestamps within 1 \[mc]s as equal.
-.P
-The original
-.B shatag
-utility also only supports the sha256 hash algorithm.
 .P
 .SH AUTHOR
 .P
@@ -245,7 +249,7 @@ library (see the source files for more details).
 .P
 .SH SEE ALSO
 .P
-shatag(1), sha256sum(1), getfattr(1), setfattr(1)
+shatag(1), b2sum(1), sha256sum(1), getfattr(1), setfattr(1)
 .P
 The original
 .B shatag

@@ -93,28 +93,32 @@ OPTIONS
               Output version information about cshatag and exit.
 
    Hash Algorithms
-       --md5  Use the MD5 hash algorithm (not recommended).
+       --blake2b
+              Use the Blake2b 512-bit hash algorithm (default).
 
-       --sha1 Use the SHA1 hash algorithm (not recommended).
-
-       --sha256
-              Use the SHA256 hash algorithm (default, shatag compatible).
+       --blake2s
+              Use the Blake2s 256-bit hash algorithm (recommended for 32-bit
+              systems).
 
        --sha512
               Use the SHA512 hash algorithm.
 
-       --blake2
-              Use the Blake2b 512-bit hash algorithm (recommended).
+       --sha256
+              Use the SHA256 hash algorithm (shatag compatible).
+
+       --sha1 Use the SHA1 hash algorithm (not recommended).
+
+       --md5  Use the MD5 hash algorithm (not recommended).
 
 EXAMPLES
        Create or update the stored hashes for a file:
 
        cshatag example.txt
 
-       Verify that a file matches its stored attributes with the blake2 hash
+       Verify that a file matches its stored attributes with the sha256 hash
        algorithm:
 
-       cshatag -c --blake2 example.txt
+       cshatag -c --sha256 example.txt
 
        Verify all files in a directory, and filter-out OK file messages:
 
@@ -152,14 +156,13 @@ EXIT STATUS
        invalid
 
 COMPATIBILITY
-       cshatag writes the user.shatag.ts field with full nanosecond precision,
-       while python uses a floating point number for the whole mtime. As a
-       result, the original shatag utility is only accurate to within about
-       200 ns. Because of this, cshatag treats timestamps within 1 µs as
-       equal.
+       The original shatag utility only supports the sha256 hash algorithm.
 
-       The original shatag utility also only supports the sha256 hash
-       algorithm.
+       Additionally, cshatag writes the user.shatag.ts field with full
+       nanosecond precision, while python uses a floating point number for the
+       whole mtime. As a result, the original shatag utility is only accurate
+       to within about 200 ns. Because of this, cshatag treats timestamps
+       within 1 µs as equal.
 
 AUTHOR
        Written by Jakob Unterwurzacher, and Tim Schlueter.
@@ -180,7 +183,7 @@ COPYRIGHT
        OpenSSL library (see the source files for more details).
 
 SEE ALSO
-       shatag(1), sha256sum(1), getfattr(1), setfattr(1)
+       shatag(1), b2sum(1), sha256sum(1), getfattr(1), setfattr(1)
 
        The original shatag utility, written in python by Maxime Augier:
        https://bitbucket.org/maugier/shatag
