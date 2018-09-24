@@ -35,8 +35,8 @@ $(NAME): $(OBJECTS) | $(OBJECTS:.o=.d)
 
 MAKECMDGOALS ?= all
 
-# Don't include the .d files when just cleaning
-ifeq (clean,$(MAKECMDGOALS))
+# Don't include the .d files when cleaning
+ifeq ($(filter clean,$(MAKECMDGOALS)),)
 include $(wildcard *.d)
 endif
 
