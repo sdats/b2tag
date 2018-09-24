@@ -45,7 +45,7 @@ function fail() {
 }
 
 function info() {
-	if [[ -z $Q || $Q = 0 ]]; then
+	if [[ -n $V && $V -ge 1 ]]; then
 		echo "$*"
 	fi
 }
@@ -300,11 +300,11 @@ function check_hash() {
 
 set -o pipefail
 
-# set -x if the "V" environment variable is set and non-zero
-if [[ -z $V || $V = 0 ]]; then
-	args=-q
-else
+# set -x if the V environment variable is >= 2
+if [[ -n $V && $V -ge 2 ]]; then
 	set -x
+else
+	args=-q
 fi
 
 if [[ -e $TEST_FILE ]]; then
