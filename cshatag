@@ -1,5 +1,0 @@
-#!/bin/sh
-
-DIR=$(dirname "$0")
-
-exec "$DIR/b2tag" --sha256 "$@"

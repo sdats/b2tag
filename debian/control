@@ -8,7 +8,6 @@ Build-Depends: attr, debhelper (>= 10), devscripts, libssl-dev, xxd
 Package: b2tag
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Conflicts: cshatag
 Recommends: man-db
 Description: shatag in C
  Detect silent data corruption under Linux using checksums in extended attributes.
