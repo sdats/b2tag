@@ -36,17 +36,6 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
-/**
- * Compare two timespec structures.
- *
- * @param ts1    Timespec structure to compare.
- * @param ts2    Timespec structure to compare.
- * @param fuzzy  If true, consider timestamps within 1us equal.
- *
- * @retval <0 @p ts1 is earlier than @p ts2.
- * @retval 0 @p ts1 and @p ts2 are equal.
- * @retval >0 @p ts1 is later than @p ts2.
- */
 int ts_compare(struct timespec ts1, struct timespec ts2, bool fuzzy)
 {
 	ts1.tv_sec  -= ts2.tv_sec;
@@ -74,12 +63,6 @@ int ts_compare(struct timespec ts1, struct timespec ts2, bool fuzzy)
 	return 0;
 }
 
-/**
- * Prints an error message to stderr and exits the program.
- *
- * @param fmt  The printf-style format string to display.
- * @param ...  Additional arguments for @p fmt.
- */
 void die(const char *fmt, ...)
 {
 	va_list ap;

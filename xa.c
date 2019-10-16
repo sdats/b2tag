@@ -41,16 +41,6 @@
 
 #include "utilities.h"
 
-/**
- * Clear the timestamp and hash values in @p xa.
- *
- * @li @p xa->alg will be left untouched.
- * @li @p xa->hash will be set to a string of ASCII '0's the same length as @p xa->alg
- *     (and NUL-terminated).
- * @li The rest of @p xa will be zeroed.
- *
- * @param xa  The extended attribute structure to clear.
- */
 void xa_clear(xa_t *xa)
 {
 	hash_alg_t alg;
@@ -74,18 +64,6 @@ void xa_clear(xa_t *xa)
 	errno = err;
 }
 
-/**
- * Hash the contents of @p fd and store the result in @p xa.
- *
- * Additionally, retrieve the last mtime of @p fd and store it in @p xa
- * (unless @p xa already contains a non-zero mtime).
- *
- * @param fd  The file to compute the hash of.
- * @param xa  The extended attribute structure to store the values in.
- *
- * @retval 0  The contents of @p fd were successfully hashed.
- * @retval !0 An error occurred while hashing the contents of @p fd.
- */
 int xa_compute(int fd, xa_t *xa)
 {
 	int err;
@@ -101,17 +79,6 @@ int xa_compute(int fd, xa_t *xa)
 	return err;
 }
 
-/**
- * Retrieve the stored extended attributes for @p fd and store it in @p xa.
- *
- * @param fd  The file to retrieve the extended attributes from.
- * @param xa  The extended attribute structure to store the values in.
- *
- * @retval -1  An error occurred reading the extended attributes.
- * @retval  0  The extended attributes were successfully read.
- * @retval  1  The file does not have the shatag extended attributes.
- * @retval  2  The shatag extended attributes are corrupted.
- */
 int xa_read(int fd, xa_t *xa)
 {
 	int err;
@@ -206,15 +173,6 @@ int xa_read(int fd, xa_t *xa)
 	return 0;
 }
 
-/**
- * Update the stored extended attributes for @p fd from @p xa.
- *
- * @param fd  The file to update the extended attributes of.
- * @param xa  The extended attribute structure to store to disk.
- *
- * @retval 0  The extended attributes were successfully updated.
- * @retval !0 An error occurred updating the extended attributes.
- */
 int xa_write(int fd, xa_t *xa)
 {
 	int err;
@@ -241,16 +199,6 @@ int xa_write(int fd, xa_t *xa)
 	return err;
 }
 
-/**
- * Convert an extended attribute structure into a human-readable form for printing.
- *
- * @param xa  The extended attribute structure to convert.
- *
- * @returns A string containing the human-readable extended attribute structure.
- *
- * @note This function uses a static buffer to format the string. It will be
- *       overwritten by successive calls to xa_format() and is not thread-safe.
- */
 const char *xa_format(xa_t *xa)
 {
 	int len;

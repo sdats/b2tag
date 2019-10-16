@@ -116,19 +116,6 @@ static int bin2hex(char *out, int outlen, unsigned char *bin, int len)
 	return 0;
 }
 
-/**
- * Hash the contents of file @p fd using the @p alg hash algorithm.
- *
- * Then store the ASCII hex representation of the resulting hash in @p hashbuf.
- *
- * @param fd      The file to hash.
- * @param hashbuf Where to store the resulting hash value.
- * @param hashlen The length of @p hash.
- * @param alg     The hash algorithm to use.
- *
- * @retval 0  The contents of @p fd were successfully hashed.
- * @retval !0 An error occurred while hashing the contents of @p fd.
- */
 int fhash(int fd, char *hashbuf, int hashlen, hash_alg_t alg)
 {
 	int err = -1;
@@ -200,14 +187,6 @@ out:
 	return err;
 }
 
-/**
- * Returns the hash size of @p alg.
- *
- * @param alg  The algorithm to use.
- *
- * @returns Returns the hash size of the @p alg hash algorithm.
- * @returns Returns 0 if an error occurs.
- */
 int get_alg_size(hash_alg_t alg)
 {
 	int len;
@@ -226,13 +205,6 @@ int get_alg_size(hash_alg_t alg)
 	return len;
 }
 
-/**
- * Returns the name of @p alg as a string.
- *
- * @param alg  The algorithm to look up.
- *
- * @returns Returns the name of the @p alg hash algorithm.
- */
 const char * get_alg_name(hash_alg_t alg)
 {
 	assert(alg < ARRAY_SIZE(hash_alg_data));
@@ -241,14 +213,6 @@ const char * get_alg_name(hash_alg_t alg)
 	return hash_alg_data[alg].name;
 }
 
-/**
- * Looks up a hash algorithm by name and sets @p alg if not NULL.
- *
- * @param name The algorithm to look up.
- * @param alg  Where to store the algorithm type (can be NULL).
- *
- * @returns Returns 0 on success and a negative number on failure.
- */
 int get_alg_by_name(const char *name, hash_alg_t *alg)
 {
 	size_t i;

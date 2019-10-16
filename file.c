@@ -483,20 +483,6 @@ static int process_path2(const char *filename, struct parent_dirs *parents)
 	return ret;
 }
 
-/**
- * Figure out whether a file path is a file or directory and process it.
- *
- * If @p filename is a regular file, this will pass it to check_file().
- *
- * If @p filename is a directory and --recursive was set on the command-line,
- * this will pass it on to check_dir().
- *
- * @param filename  The path to check.
- *
- * @retval 0  The file was processed successfully.
- * @retval >0 An recoverable error occurred.
- * @retval <0 A fatal error occurred.
- */
 int process_path(const char *filename)
 {
 	int ret;
