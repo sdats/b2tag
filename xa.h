@@ -36,13 +36,106 @@
 #define XA_H
 
 #include <stdbool.h>
-#include <sys/xattr.h>
+
+#include <sys/time.h>
 
 #include "hash.h"
 
-#ifndef ENOATTR
-#define ENOATTR ENODATA
-#endif
+/**
+ * Types of errors returned.
+ */
+typedef enum err {
+	E_OK = 0,
+	E_IO_ERROR = 1,
+	E_NOT_FOUND = 2,
+	E_INVALID = 3,
+	E_UNSUPPORTED = 4,
+} err_t;
+
+/*
+ * Low-level attribute operations.
+ */
+
+/**
+ * Read the timestamp from the extended attributes of @p fd.
+ * 
+ * @param fd     The file which extended attributes to operate on.
+ * @param mtime  Where to store the result.
+ * @param fuzzy  Whether timestamp looks truncated.
+ * 
+ * @retval E_OK           The timestamp was read and parsed successfully.
+ * @retval E_IO_ERROR     An error occurred while reading the attribute.
+ * @retval E_NOT_FOUND    The corresponding attribute is not present.
+ * @retval E_INVALID      The corresponding attribute contains invalid data.
+ * @retval E_UNSUPPORTED  Extended attributes are not supported.
+ */
+err_t xa_read_timestamp(int fd, struct timespec* mtime, bool* truncated);
+
+/**
+ * Write the timestamp into the extended attributes of @p fd.
+ * 
+ * @param fd     The file which extended attributes to operate on.
+ * @param mtime  The timestamp to write.
+ * 
+ * @retval E_OK           The timestamp was written successfully.
+ * @retval E_IO_ERROR     An error occurred while writing the attribute.
+ * @retval E_UNSUPPORTED  Extended attributes are not supported.
+ */
+err_t xa_write_timestamp(int fd, const struct timespec mtime);
+
+/**
+ * Remove the timestamp from the extended attributes of @p fd.
+ * 
+ * @param fd     The file which extended attributes to operate on.
+ * 
+ * @retval E_OK           The timestamp was removed successfully.
+ * @retval E_IO_ERROR     An error occurred while removing the attribute.
+ * @retval E_NOT_FOUND    The corresponding attribute is not present.
+ * @retval E_UNSUPPORTED  Extended attributes are not supported.
+ */
+err_t xa_remove_timestamp(int fd);
+
+/**
+ * Read the checksum for the algorithm @p alg from the extended attributes of @p fd.
+ * 
+ * @param fd        The file which extended attributes to operate on.
+ * @param alg       The algorithm for which the checksum should be read.
+ * @param checksum  Where to store the result. Must be big enough to store at least
+ *                  MAX_HASH_STRING_LENGTH + 1 characters.
+ * 
+ * @retval E_OK           The hash was read and parsed successfully.
+ * @retval E_IO_ERROR     An error occurred while reading the attribute.
+ * @retval E_NOT_FOUND    The corresponding attribute is not present.
+ * @retval E_INVALID      The corresponding attribute contains invalid data.
+ * @retval E_UNSUPPORTED  Extended attributes are not supported.
+ */
+err_t xa_read_checksum(int fd, hash_alg_t alg, char* checksum);
+
+/**
+ * Write the checksum into the extended attributes of @p fd.
+ * 
+ * @param fd        The file which extended attributes to operate on.
+ * @param alg       The type of the algorithm that produced the checksum.
+ * @param checksum  The null-terminated string representation of the checksum to write.
+ * 
+ * @retval E_OK           The checksum was written successfully.
+ * @retval E_IO_ERROR     An error occurred while writing the attribute.
+ * @retval E_UNSUPPORTED  Extended attributes are not supported.
+ */
+err_t xa_write_checksum(int fd, hash_alg_t alg, const char* checksum);
+
+/**
+ * Remove the checksum for algorithm @p alg from the extended attributes of @p fd.
+ * 
+ * @param fd     The file which extended attributes to operate on.
+ * @param alg    The algorithm for which the checksum should be removed.
+ * 
+ * @retval E_OK           The checksum was removed successfully.
+ * @retval E_IO_ERROR     An error occurred while removing the attribute.
+ * @retval E_NOT_FOUND    The corresponding attribute is not present.
+ * @retval E_UNSUPPORTED  Extended attributes are not supported.
+ */
+err_t xa_remove_checksum(int fd, hash_alg_t alg);
 
 /**
  * Metadata structure for b2tag.

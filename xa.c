@@ -39,7 +39,154 @@
 #include <errno.h>
 #include <string.h>
 
+#include <sys/xattr.h>
+
 #include "utilities.h"
+
+#ifndef ENOATTR
+#define ENOATTR ENODATA
+#endif
+
+#define XATTR_NAMESPACE "user.shatag"
+#define TIMESTAMP_XATTR XATTR_NAMESPACE ".ts"
+
+
+static err_t xa_read_xattr(int fd, const char* attr_name, char* buffer, size_t size) {
+	ssize_t len;
+	len = fgetxattr(fd, attr_name, buffer, size - 1);
+	if (len < 0) {
+		switch (errno) {
+			case ENOATTR: return E_NOT_FOUND;
+			case ERANGE:  return E_INVALID;
+			case ENOTSUP: return E_UNSUPPORTED;
+			default:      return E_IO_ERROR;
+		}
+	}
+
+	buffer[len] = '\0';
+	return E_OK;
+}
+
+static err_t xa_write_xattr(int fd, const char* attr_name, const char* value) {
+	int err;
+	err = fsetxattr(fd, attr_name, value, strlen(value), 0);
+	if (err != 0) {
+		switch (errno) {
+			case ENOTSUP: return E_UNSUPPORTED;
+			default:      return E_IO_ERROR;
+		}
+	}
+	return E_OK;
+}
+
+static err_t xa_remove_xattr(int fd, const char* attr_name) {
+	int err;
+	err = fremovexattr(fd, attr_name);
+	if (err != 0) {
+		switch (errno) {
+			case ENOATTR: return E_NOT_FOUND;
+			case ENOTSUP: return E_UNSUPPORTED;
+			default:      return E_IO_ERROR;
+		}
+	}
+	return E_OK;
+}
+
+err_t xa_read_timestamp(int fd, struct timespec* mtime, bool* truncated) {
+	int err;
+	int end;
+	int start;
+	/* Example: 1335974989.123456789 => len=20 */
+	char buf[32];
+	err_t result;
+
+	assert(fd >= 0);
+	assert(mtime);
+	assert(truncated);
+
+	result = xa_read_xattr(fd, TIMESTAMP_XATTR, buf, sizeof(buf));
+	if (result != E_OK) {
+		return result;
+	}
+
+	err = sscanf(buf, "%ld.%n%10ld%n", &mtime->tv_sec, &start, &mtime->tv_nsec, &end);
+	if (err < 1)
+		return E_INVALID;
+
+	end -= start;
+	if (end < 9) {
+		*truncated = true;
+		for (; end < 9; end++)
+			mtime->tv_nsec *= 10;
+	}
+
+	if (mtime->tv_nsec >= 1000000000 || end >= 10)
+		return E_INVALID;
+
+	return E_OK;
+}
+
+err_t xa_write_timestamp(int fd, const struct timespec mtime) {
+	char buf[32];
+
+	assert(fd >= 0);
+
+	snprintf(buf, sizeof(buf), "%lu.%09lu", mtime.tv_sec, mtime.tv_nsec);
+	return xa_write_xattr(fd, TIMESTAMP_XATTR, buf);
+}
+
+err_t xa_remove_timestamp(int fd) {
+	return xa_remove_xattr(fd, TIMESTAMP_XATTR);
+}
+
+err_t xa_read_checksum(int fd, hash_alg_t alg, char* checksum) {
+	char buf[32];
+	err_t result;
+	char* c = checksum;
+
+	assert(fd >= 0);
+	assert(checksum);
+
+	snprintf(buf, sizeof(buf), XATTR_NAMESPACE ".%s", get_alg_name(alg));
+	result = xa_read_xattr(fd, buf, checksum, MAX_HASH_STRING_LENGTH + 1);
+	if (result != E_OK)
+		return result;
+
+	if (strlen(checksum) != get_alg_size(alg) * 2)
+		return E_INVALID;
+
+	/* Make sure the hash is all lowercase hex chars. */
+	while (*c) {
+		if (!isxdigit(*c))
+			return E_INVALID;
+
+		/* Convert to lowercase if necessary. */
+		if (isupper(*c))
+			*c = tolower(*c);
+
+		++c;
+	}
+	return E_OK;
+}
+
+err_t xa_write_checksum(int fd, hash_alg_t alg, const char* checksum) {
+	char buf[32];
+
+	assert(fd >= 0);
+	assert(checksum);
+
+	snprintf(buf, sizeof(buf), XATTR_NAMESPACE ".%s", get_alg_name(alg));
+	return xa_write_xattr(fd, buf, checksum);
+}
+
+err_t xa_remove_checksum(int fd, hash_alg_t alg) {
+	char buf[32];
+
+	assert(fd >= 0);
+
+	snprintf(buf, sizeof(buf), XATTR_NAMESPACE ".%s", get_alg_name(alg));
+	return xa_remove_xattr(fd, buf);
+}
 
 void xa_clear(xa_t *xa)
 {
@@ -81,102 +228,60 @@ int xa_compute(int fd, xa_t *xa)
 
 int xa_read(int fd, xa_t *xa)
 {
-	int err;
-	int end;
-	int start;
-	/* Example: 1335974989.123456789 => len=20 */
-	char buf[32];
-	ssize_t len;
+	err_t result;
 
 	xa_clear(xa);
-
 	assert(fd >= 0);
 
 	/* Read timestamp xattr. */
-	len = fgetxattr(fd, "user.shatag.ts", buf, sizeof(buf) - 1);
-	if (len < 0) {
-		if (errno == ENOATTR)
-			return 1;
-
-		if (errno == ENOTSUP)
-			pr_err("Filesystem does not support extended attributes\n");
-		else
-			pr_err("Failed to retrieve user.shatag.ts: %m\n");
-		return -1;
-	}
-
-	buf[len] = '\0';
-
-	err = sscanf(buf, "%ld.%n%10ld%n", &xa->mtime.tv_sec, &start, &xa->mtime.tv_nsec, &end);
-	if (err < 1) {
-		pr_err("Malformed timestamp: %m\n");
+	result = xa_read_timestamp(fd, &xa->mtime, &xa->fuzzy);
+	if (result != E_OK) {
 		xa_clear(xa);
-		return 2;
-	}
-
-	end -= start;
-	if (end < 9) {
-		xa->fuzzy = true;
-
-		for (; end < 9; end++)
-			xa->mtime.tv_nsec *= 10;
-	}
-
-	if (xa->mtime.tv_nsec >= 1000000000 || end >= 10) {
-		pr_err("Invalid timestamp (ns too large): %s\n", buf);
-		xa_clear(xa);
-		return 2;
+		switch (result) {
+			case E_NOT_FOUND:
+				return 1;
+			case E_UNSUPPORTED:
+				pr_err("Filesystem does not support extended attributes\n");
+				return -1;
+			case E_IO_ERROR:
+				pr_err("Failed to retrieve `user.shatag.ts': %m\n");
+				return -1;
+			case E_INVALID:
+				pr_err("Malformed timestamp: %m\n");
+				return 2;
+			default:
+				break;
+		}
 	}
 
 	/* Read hash xattr. */
-	snprintf(buf, sizeof(buf), "user.shatag.%s", get_alg_name(xa->alg));
-	len = fgetxattr(fd, buf, xa->hash, sizeof(xa->hash) - 1);
-	if (len < 0) {
+	result = xa_read_checksum(fd, xa->alg, xa->hash);
+	if (result != E_OK) {
 		xa_clear(xa);
-		if (errno == ENOATTR)
-			return 1;
-
-		pr_err("Failed to retrieve %s: %m\n", buf);
-		return -1;
-	}
-
-	xa->hash[len] = '\0';
-
-	if (len != (ssize_t)get_alg_size(xa->alg) * 2) {
-		pr_err("Stored hash size mismatch: %zd != %zu\n", len, get_alg_size(xa->alg) * 2);
-		xa_clear(xa);
-		return 2;
-	}
-
-	/* Make sure the hash is all lowercase hex chars. */
-	for (start = 0; (ssize_t)start < len; start++) {
-		char c = xa->hash[start];
-
-		if (!isxdigit(c)) {
-			pr_err("Malformed hash.\n");
-			if (isprint(c))
-				pr_debug("Found '%c' (0x%02x).\n", c, (unsigned)c);
-			else
-				pr_debug("Found 0x%02x character.\n", (unsigned)c);
-
-			xa_clear(xa);
-			return 2;
+		switch (result) {
+			case E_NOT_FOUND:
+				return 1;
+			case E_UNSUPPORTED:
+				pr_err("Filesystem does not support extended attributes\n");
+				return -1;
+			case E_IO_ERROR:
+				pr_err("Failed to retrieve `" XATTR_NAMESPACE ".%s': %m\n", get_alg_name(xa->alg));
+				return -1;
+			case E_INVALID:
+				pr_err("Malformed checksum `" XATTR_NAMESPACE ".%s': %m\n", get_alg_name(xa->alg));
+				return 2;
+			default:
+				break;
 		}
-
-		/* Convert to lowercase if necessary. */
-		if (isupper(c))
-			xa->hash[start] = tolower(c);
 	}
 
 	xa->valid = true;
-
 	return 0;
 }
 
 int xa_write(int fd, xa_t *xa)
 {
-	int err;
-	char buf[32];
+	err_t result;
 
 	assert(fd >= 0);
 	assert(xa != NULL);
@@ -184,19 +289,19 @@ int xa_write(int fd, xa_t *xa)
 	if (!xa->valid)
 		return -EINVAL;
 
-	snprintf(buf, sizeof(buf), "user.shatag.%s", get_alg_name(xa->alg));
-	err = fsetxattr(fd, buf, &xa->hash, strlen(xa->hash), 0);
-	if (err != 0) {
-		pr_err("Failed to set `%s' xattr: %m\n", buf);
-		return err;
+	result = xa_write_checksum(fd, xa->alg, xa->hash);
+	if (result != E_OK) {
+		pr_err("Failed to set `" XATTR_NAMESPACE ".%s' xattr: %m\n", get_alg_name(xa->alg));
+		return -1;
 	}
 
-	snprintf(buf, sizeof(buf), "%lu.%09lu", xa->mtime.tv_sec, xa->mtime.tv_nsec);
-	err = fsetxattr(fd, "user.shatag.ts", buf, strlen(buf), 0);
-	if (err != 0)
-		pr_err("Failed to set `%s' xattr: %m\n", "user.shatag.ts");
+	result = xa_write_timestamp(fd, xa->mtime);
+	if (result != E_OK) {
+		pr_err("Failed to set `%s' xattr: %m\n", TIMESTAMP_XATTR);
+		return -1;
+	}
 
-	return err;
+	return 0;
 }
 
 const char *xa_format(xa_t *xa)
