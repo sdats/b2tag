@@ -39,6 +39,9 @@
 /** The largest possible hash size. */
 #define MAX_HASH_SIZE EVP_MAX_MD_SIZE
 
+/** The longest possible string representation of a hash. */
+#define MAX_HASH_STRING_LENGTH (2 * MAX_HASH_SIZE)
+
 /** The supported hash algorithms. */
 typedef enum hash_alg {
 	/**
@@ -105,7 +108,7 @@ int fhash(int fd, char *hashbuf, int hashlen, hash_alg_t alg);
  * @returns Returns the hash size of the @p alg hash algorithm.
  * @returns Returns 0 if an error occurs.
  */
-int get_alg_size(hash_alg_t alg);
+size_t get_alg_size(hash_alg_t alg);
 
 /**
  * Returns the name of @p alg as a string.

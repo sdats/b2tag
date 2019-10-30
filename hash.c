@@ -187,7 +187,7 @@ out:
 	return err;
 }
 
-int get_alg_size(hash_alg_t alg)
+size_t get_alg_size(hash_alg_t alg)
 {
 	int len;
 

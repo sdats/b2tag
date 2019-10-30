@@ -58,7 +58,7 @@ typedef struct xa_s
 	/** The hash algorithm to use. */
 	hash_alg_t alg;
 	/** The file data's hash value as an ASCII hex string. */
-	char hash[MAX_HASH_SIZE * 2 + 1];
+	char hash[MAX_HASH_STRING_LENGTH + 1];
 } xa_t;
 
 /**

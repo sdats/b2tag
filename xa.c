@@ -143,7 +143,7 @@ int xa_read(int fd, xa_t *xa)
 	xa->hash[len] = '\0';
 
 	if (len != (ssize_t)get_alg_size(xa->alg) * 2) {
-		pr_err("Stored hash size mismatch: %zd != %d\n", len, get_alg_size(xa->alg) * 2);
+		pr_err("Stored hash size mismatch: %zd != %zu\n", len, get_alg_size(xa->alg) * 2);
 		xa_clear(xa);
 		return 2;
 	}
